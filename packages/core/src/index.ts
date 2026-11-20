@@ -38,6 +38,19 @@ export {
 } from './tags/types.ts';
 export { genreName, id3Genre } from './tags/genres.ts';
 export { formatOfPath, readTags } from './tags/readTags.ts';
+export {
+  EDIT_NUMBER_FIELDS,
+  EDIT_TEXT_FIELDS,
+  MAX_NUMBER,
+  applyEdit,
+  cleanEdit,
+  parseTagEdit,
+  tagDifferences,
+  type EditNumberField,
+  type EditTextField,
+  type TagEdit,
+} from './tags/edit.ts';
+export { TagCheckError, canEditFormat, rewriteTags, type Rewritten } from './tags/writeTags.ts';
 export { decodeBase64, parseFlacPicture, pictureMime } from './tags/picture.ts';
 export { parseVorbisComment, vorbisPictures, vorbisTags, type Comments } from './tags/vorbisComment.ts';
 export {

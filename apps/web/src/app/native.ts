@@ -1,6 +1,6 @@
 /** What the desktop app's preload script puts on `window.playlarkNative` (PRD §16.1). */
 import type { LibraryFile } from '@playlark/core';
-import type { IndexBridge, NativeMenuItem, PlaylistWriter } from '@playlark/ui';
+import type { IndexBridge, NativeMenuItem, PlaylistWriter, TagWriter } from '@playlark/ui';
 
 /** The music folder the desktop app has open. `missing`: the one chosen last time is gone. */
 export interface NativeFolder {
@@ -31,6 +31,8 @@ export interface PlaylarkNative {
   readonly index: IndexBridge;
   /** Writes, renames and trashes playlists in the open folder (PRD §9). */
   readonly playlists: PlaylistWriter;
+  /** Saves song tags in the open folder (PRD §11.3). */
+  readonly tags: TagWriter;
 }
 
 export function nativeBridge(): PlaylarkNative | null {

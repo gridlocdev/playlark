@@ -36,4 +36,8 @@ contextBridge.exposeInMainWorld('playlarkNative', {
     rename: (from: string, to: string) => ipcRenderer.invoke('playlark:rename-playlist', from, to),
     trash: (path: string, base: string) => ipcRenderer.invoke('playlark:trash-playlist', path, base),
   },
+  tags: {
+    write: (path: string, edit: unknown, expected: unknown) =>
+      ipcRenderer.invoke('playlark:write-tags', path, edit, expected),
+  },
 });

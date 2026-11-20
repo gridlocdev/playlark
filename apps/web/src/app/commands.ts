@@ -23,6 +23,7 @@ export const SONG_MENU: readonly string[] = [
   'song.addToQueue',
   'song.addToPlaylist',
   'song.favourite',
+  'song.info',
   '|',
   'song.goToAlbum',
   'song.goToArtist',
@@ -180,6 +181,20 @@ export function buildCommands(app: AppController): CommandCatalog {
         return paths.length > 0 && paths.every((p) => app.stats.get(p).favourite);
       },
       run: () => app.stats.toggleFavourite(favouriteTargets(app)),
+    },
+    {
+      id: 'song.info',
+      title: 'Song Info…',
+      description: 'Show and edit the tags and cover of the selected songs.',
+      group: 'Song',
+      shortcuts: ['mod+i'],
+      keywords: 'tags edit metadata properties details cover title artist album',
+      context: true,
+      enabled: () => app.selectedSongs().some((s) => !s.error),
+      run: () => {
+        app.show('songInfo');
+        void app.tags.open(app.selectedSongs());
+      },
     },
     {
       id: 'song.goToAlbum',

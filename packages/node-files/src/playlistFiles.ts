@@ -117,7 +117,7 @@ async function sameFile(a: string, b: string): Promise<boolean> {
 }
 
 /** `trash/<YYYY-MM-DD>/<rel>` in local time, with " 2", " 3"… before the extension when taken. */
-async function trashPath(dataDir: string, rel: string, now: Date): Promise<string> {
+export async function trashPath(dataDir: string, rel: string, now: Date): Promise<string> {
   const pad = (n: number) => String(n).padStart(2, '0');
   const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const base = path.join(dataDir, TRASH_FOLDER, day, ...rel.split('/'));

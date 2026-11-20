@@ -263,3 +263,47 @@ test.describe('Editing playlists', () => {
     }
   });
 });
+
+test.describe('Editing tags', () => {
+  test('Song Info saves a new title into the file, keeps the original in the trash, and Undo puts it back', async () => {
+    const temp = realpathSync(mkdtempSync(path.join(tmpdir(), 'playlark-e2e-')));
+    const profile = path.join(temp, 'profile');
+    const app = await electron.launch({
+      cwd: DESKTOP,
+      args: ['out/main.js'],
+      env: { ...process.env, PLAYLARK_HEADLESS: '1', PLAYLARK_USER_DATA: profile, PLAYLARK_MUSIC: DATA },
+    });
+    const file = path.join(DATA, 'Northwind Quartet/Harbour Lights/02 Salt Air.flac');
+    const original = readFileSync(file);
+    try {
+      const window = await app.firstWindow();
+      const errors = watchErrors(window);
+      await waitForApp(window);
+      await songs(window)
+        .getByRole('row', { name: /Salt Air/ })
+        .click();
+      await window.keyboard.press('ControlOrMeta+KeyI');
+      const dialog = window.getByRole('dialog', { name: /Song Info/ });
+      const title = dialog.locator('input[name="title"]');
+      await expect(title).toHaveValue('Salt Air');
+      await expect(dialog).toContainText('FLAC');
+      await title.fill('Sea Salt');
+      await dialog.getByRole('button', { name: 'Save' }).click();
+      await expect(dialog).toBeHidden();
+      await expect(songs(window).getByRole('row', { name: /Sea Salt/ })).toBeVisible();
+      expect(readFileSync(file).equals(original)).toBe(false);
+      const day = readdirSync(path.join(profile, 'trash'))[0]!;
+      const trashed = path.join(profile, 'trash', day, 'Northwind Quartet/Harbour Lights/02 Salt Air.flac');
+      expect(readFileSync(trashed).equals(original)).toBe(true);
+
+      await window.keyboard.press('ControlOrMeta+KeyZ');
+      await expect(window.locator('.pl-status')).toContainText('Undo Edit Tags');
+      await expect(songs(window).getByRole('row', { name: /Salt Air/ })).toBeVisible();
+      await expect(songs(window).getByRole('row', { name: /Sea Salt/ })).toHaveCount(0);
+      expect(errors).toEqual([]);
+    } finally {
+      await closeApp(app);
+      rmSync(temp, { recursive: true, force: true });
+    }
+  });
+});

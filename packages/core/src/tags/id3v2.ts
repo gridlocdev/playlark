@@ -178,8 +178,17 @@ function v24FrameSize(b: Uint8Array, at: number, end: number): number {
   return landsWell(safe) || !landsWell(plain) ? safe : plain;
 }
 
-/** Parses a whole tag (header included). Frames it can't read are skipped. */
-export function parseId3v2(tag: Uint8Array): Id3v2 | null {
+/** One frame of a tag: its id (2.2 ids as their 2.3/2.4 names), its bytes as stored, and its body once decoded. */
+export interface Id3Frame {
+  readonly id: string;
+  /** The whole frame, header included, with the tag-wide unsynchronisation of 2.2 and 2.3 undone. */
+  readonly raw: Uint8Array;
+  /** The body with the frame's own flags undone, or null when it's compressed or encrypted. */
+  readonly body: Uint8Array | null;
+}
+
+/** The frames of a whole tag (header included), in order; stops at the padding or anything unreadable. */
+export function id3v2Frames(tag: Uint8Array): { version: 2 | 3 | 4; frames: Id3Frame[] } | null {
   if (id3v2Length(tag) === null) return null;
   const version = tag[3] as 2 | 3 | 4;
   const flags = tag[5] ?? 0;
@@ -192,8 +201,7 @@ export function parseId3v2(tag: Uint8Array): Id3v2 | null {
     // The extended header: 2.3's size leaves out its own 4 bytes, 2.4's counts them.
     at = version === 3 ? 4 + u32be(body, 0) : synchsafe(body, 0);
   }
-  const text = new Map<string, string>();
-  const pictures: Picture[] = [];
+  const frames: Id3Frame[] = [];
   const idLength = version === 2 ? 3 : 4;
   const headerLength = version === 2 ? 6 : HEADER;
   while (at + headerLength <= body.length) {
@@ -210,22 +218,49 @@ export function parseId3v2(tag: Uint8Array): Id3v2 | null {
       size = v24FrameSize(body, at, body.length);
       frameFlags = ((body[at + 8] ?? 0) << 8) | (body[at + 9] ?? 0);
     }
+    const frameStart = at;
     const start = at + headerLength;
     at = start + size;
     if (size <= 0 || at > body.length) break;
-    const id = version === 2 ? (V22_IDS[rawId] ?? rawId) : rawId;
-    let frame = body.subarray(start, start + size);
+    const id = version === 2 ? (V22_IDS[rawId] ?? (rawId === 'PIC' ? 'APIC' : rawId)) : rawId;
+    let frame: Uint8Array | null = body.subarray(start, start + size);
     if (version === 3) {
-      // Compressed or encrypted frames can't be read without zlib or a key; skip them.
-      if ((frameFlags & 0x00c0) !== 0) continue;
-      if ((frameFlags & 0x0020) !== 0) frame = frame.subarray(1);
+      // Compressed or encrypted frames can't be read without zlib or a key.
+      if ((frameFlags & 0x00c0) !== 0) frame = null;
+      else if ((frameFlags & 0x0020) !== 0) frame = frame.subarray(1);
     } else if (version === 4) {
-      if ((frameFlags & 0x000c) !== 0) continue;
-      if ((frameFlags & 0x0040) !== 0) frame = frame.subarray(1);
-      if ((frameFlags & 0x0001) !== 0) frame = frame.subarray(4);
-      if ((frameFlags & 0x0002) !== 0) frame = resync(frame);
+      if ((frameFlags & 0x000c) !== 0) frame = null;
+      else {
+        if ((frameFlags & 0x0040) !== 0) frame = frame.subarray(1);
+        if ((frameFlags & 0x0001) !== 0) frame = frame.subarray(4);
+        if ((frameFlags & 0x0002) !== 0) frame = resync(frame);
+      }
     }
-    if (id === 'APIC' || rawId === 'PIC') {
+    frames.push({ id, raw: body.subarray(frameStart, at), body: frame });
+  }
+  return { version, frames };
+}
+
+/** The description of a `TXXX` frame body, upper-cased. */
+export function txxxName(body: Uint8Array): string {
+  return (textValues(body)[0] ?? '').toUpperCase();
+}
+
+/** An `APIC` frame body's picture type, or null when the body can't be read. */
+export function apicType(version: 2 | 3 | 4, body: Uint8Array): number | null {
+  return parsePicture(body, version === 2)?.type ?? null;
+}
+
+/** Parses a whole tag (header included). Frames it can't read are skipped. */
+export function parseId3v2(tag: Uint8Array): Id3v2 | null {
+  const parsed = id3v2Frames(tag);
+  if (!parsed) return null;
+  const { version } = parsed;
+  const text = new Map<string, string>();
+  const pictures: Picture[] = [];
+  for (const { id, body: frame } of parsed.frames) {
+    if (!frame) continue;
+    if (id === 'APIC') {
       const picture = parsePicture(frame, version === 2);
       if (picture) pictures.push(picture);
     } else if (id === 'TXXX') {

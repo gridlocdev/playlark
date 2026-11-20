@@ -28,9 +28,12 @@ import {
   playlistResult,
   type PlaylistResult,
   renamePlaylistFile,
+  tagResult,
   trashPlaylistFile,
   writePlaylistFile,
+  writeSongTags,
 } from '@playlark/node-files';
+import { parseTagEdit } from '@playlark/core';
 import { Channels, type FolderInfo } from './bridge.ts';
 import { folderExists, folderInfo, saveFolderChoice, startFolder } from './folderChoice.ts';
 import { COVER_PREFIX, MEDIA_PREFIX, coverResponse, mediaResponse } from './media.ts';
@@ -275,6 +278,23 @@ function registerIpc(): void {
   ipcMain.handle(Channels.trashPlaylist, (e, rel: unknown, base: unknown) => {
     if (!trusted(e) || !isText(rel) || !isText(base)) return refuse();
     return inFolder((root) => trashPlaylistFile(root, rel, base, app.getPath('userData')));
+  });
+  // Song Info saves (PRD §11.3): the original goes to the trash in the app's data folder.
+  ipcMain.handle(Channels.writeTags, (e, rel: unknown, value: unknown, expected: unknown) => {
+    const edit = parseTagEdit(value);
+    const facts = expected as { size?: unknown; mtime?: unknown } | null;
+    if (
+      !trusted(e) ||
+      !isText(rel) ||
+      !edit ||
+      typeof facts?.size !== 'number' ||
+      typeof facts.mtime !== 'number'
+    )
+      return refuse();
+    const root = musicFolder;
+    if (!root) return { ok: false, code: 'failed', message: 'No music folder is open.' };
+    const want = { size: facts.size, mtime: facts.mtime };
+    return tagResult(rel, () => writeSongTags(root, rel, edit, want, app.getPath('userData')));
   });
   ipcMain.on(Channels.setMenu, (e, items: unknown) => {
     if (!trusted(e) || !Array.isArray(items)) return;

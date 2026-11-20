@@ -26,15 +26,17 @@ import {
 /** `moov` with cover art can run to a few megabytes; anything past this is not a music file's. */
 const MAX_MOOV = 64 * 1024 * 1024;
 
-interface Atom {
+export interface Atom {
   readonly type: string;
+  /** Where the header starts. */
+  readonly at: number;
   /** Where the body starts. */
   readonly start: number;
   readonly end: number;
 }
 
 /** The atoms laid end to end in `b` between `from` and `to`. */
-function* atoms(b: Uint8Array, from: number, to: number): Generator<Atom> {
+export function* atoms(b: Uint8Array, from: number, to: number): Generator<Atom> {
   let at = from;
   while (at + 8 <= to) {
     let size = u32be(b, at);
@@ -45,17 +47,17 @@ function* atoms(b: Uint8Array, from: number, to: number): Generator<Atom> {
       header = 16;
     } else if (size === 0) size = to - at;
     if (size < header || at + size > to) return;
-    yield { type, start: at + header, end: at + size };
+    yield { type, at, start: at + header, end: at + size };
     at += size;
   }
 }
 
-function child(b: Uint8Array, parent: Atom, type: string, skip = 0): Atom | undefined {
+export function child(b: Uint8Array, parent: Atom, type: string, skip = 0): Atom | undefined {
   for (const a of atoms(b, parent.start + skip, parent.end)) if (a.type === type) return a;
   return undefined;
 }
 
-function path(b: Uint8Array, parent: Atom, ...types: string[]): Atom | undefined {
+export function path(b: Uint8Array, parent: Atom, ...types: string[]): Atom | undefined {
   let at: Atom | undefined = parent;
   for (const t of types) {
     if (!at) return undefined;

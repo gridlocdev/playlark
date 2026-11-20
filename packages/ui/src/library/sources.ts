@@ -2,8 +2,16 @@
  * Where the music folder is (PRD §3.1): the UI scans and plays through a `LibrarySource` and never knows whether
  * the files are in memory, in a browser folder, on the NAS or on disk behind the desktop app.
  */
-import type { ByteSource, LibraryFile, ScanSource } from '@playlark/core';
-import { isLibraryPath, isPlaylistPath, isSkippedName, memorySource, sha256Hex } from '@playlark/core';
+import type { ByteSource, LibraryFile, ScanSource, TagEdit } from '@playlark/core';
+import {
+  TagCheckError,
+  isLibraryPath,
+  isPlaylistPath,
+  isSkippedName,
+  memorySource,
+  rewriteTags,
+  sha256Hex,
+} from '@playlark/core';
 
 export type SourceKind = 'memory' | 'browser' | 'nas' | 'desktop';
 
@@ -17,6 +25,24 @@ export interface LibrarySource extends ScanSource {
   bytes(path: string): Promise<ArrayBuffer>;
   /** Writes playlists (PRD §9.3); absent where they can't be edited (the browser folder, §17). */
   readonly playlists?: PlaylistWriter;
+  /** Writes song tags (PRD §11); absent where they can't be edited (the browser folder, §17). */
+  readonly tags?: TagWriter;
+}
+
+/** A song file's size and modified time, as the folder listing gives them. */
+export interface FileFacts {
+  readonly size: number;
+  readonly mtime: number;
+}
+
+/** What a tag save gives back: the file's new facts and the edit that undoes it, or why it was refused. */
+export type TagWriteResult =
+  | { readonly ok: true; readonly file: FileFacts; readonly undo: TagEdit }
+  | { readonly ok: false; readonly code: 'changed' | 'failed'; readonly message: string };
+
+/** Tag writes in the music folder (PRD §11.3), refused when the file is no longer at `expected`. */
+export interface TagWriter {
+  write(path: string, edit: TagEdit, expected: FileFacts): Promise<TagWriteResult>;
 }
 
 /** Why a playlist write was refused: a conflict (`changed`, `deleted`, `exists`) or a failure. */
@@ -80,16 +106,45 @@ export function memoryLibrary(name: string, files: Record<string, Uint8Array>): 
       return Promise.resolve({ ok: true, version: found });
     },
   };
+  // A write that fits the tag's padding keeps the size, so each one moves the time on, as a disk would.
+  const mtimes = new Map<string, number>();
+  const factsOf = (path: string): FileFacts => ({ size: get(path).length, mtime: mtimes.get(path) ?? 0 });
+  const tags: TagWriter = {
+    write: async (path, edit, expected) => {
+      const name = path.split('/').pop() ?? path;
+      const now = files[path] ? factsOf(path) : null;
+      if (!now || now.size !== expected.size || now.mtime !== expected.mtime)
+        return {
+          ok: false,
+          code: 'changed',
+          message: `${name} changed somewhere else. Close Song Info and try again.`,
+        };
+      try {
+        const { bytes, undo } = await rewriteTags(get(path), path, edit);
+        if (bytes) {
+          files[path] = bytes;
+          mtimes.set(path, now.mtime + 1);
+        }
+        return { ok: true, file: factsOf(path), undo };
+      } catch (e) {
+        const reason =
+          e instanceof TagCheckError
+            ? 'the check after writing failed. The file wasn’t changed.'
+            : e instanceof Error
+              ? e.message
+              : String(e);
+        return { ok: false, code: 'failed', message: `Couldn’t save ${name}: ${reason}` };
+      }
+    },
+  };
   return {
     kind: 'memory',
     name,
-    list: () =>
-      Promise.resolve(
-        Object.entries(files).map(([path, b]): LibraryFile => ({ path, size: b.length, mtime: 0 })),
-      ),
+    list: () => Promise.resolve(Object.keys(files).map((path): LibraryFile => ({ path, ...factsOf(path) }))),
     open: (f) => Promise.resolve(memorySource(get(f.path))),
     bytes: (path) => Promise.resolve(get(path).slice().buffer),
     playlists,
+    tags,
   };
 }
 
@@ -152,6 +207,7 @@ export function urlLibrary(options: {
   readonly name: string;
   readonly where?: string;
   readonly playlists?: PlaylistWriter;
+  readonly tags?: TagWriter;
   readonly list: () => Promise<readonly LibraryFile[]>;
   /** The URL a song's bytes are served from. */
   readonly mediaUrl: (path: string) => string;
@@ -163,6 +219,7 @@ export function urlLibrary(options: {
     name: options.name,
     ...(options.where ? { where: options.where } : {}),
     ...(options.playlists ? { playlists: options.playlists } : {}),
+    ...(options.tags ? { tags: options.tags } : {}),
     list: options.list,
     open: (f) => Promise.resolve(rangeSource(options.mediaUrl(f.path), f.size, fetcher)),
     bytes: async (path) => {

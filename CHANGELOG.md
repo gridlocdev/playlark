@@ -18,4 +18,5 @@
 - Sort names (artist, album artist, album, title) and ReplayGain values are read from every format.
 - Playlists: every `.m3u8` and `.m3u` file in the folder is in the sidebar; missing songs show greyed and are skipped. In the desktop app, New Playlist (⌘N), Add to Playlist… or a drag onto the sidebar, reorder by dragging, Delete to take songs out, Rename and Delete Playlist (to the trash), all with Undo (⌘Z) and saved at once. A playlist changed by another app is picked up, or asks Keep Mine or Use Theirs while you are editing it.
 - Favourites (♥, ⌥⌘F) and play counts, with Favourites, Recently Added and Most Played in the sidebar. A play counts after half the song or 4 minutes; a moved song keeps its stats.
+- Song Info (⌘I): see a song's tags, cover and file facts, and in the desktop app edit the tags and cover of MP3, FLAC and M4A files, one song or many at once. Only changed fields are written, each file is checked after writing, the original goes to the trash, and ⌘Z puts the old tags back.
 - The desktop app (Electron), the browser build (Chrome and Edge open a folder directly), and a server that plays a NAS folder in any browser.

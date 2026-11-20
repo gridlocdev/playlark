@@ -34,6 +34,7 @@ import { MISSING, Playlists } from './playlists.ts';
 import { QueueKeeper, goneNotice } from './queueKeeper.ts';
 import { NO_SELECTION, keep, only, selectedRows, type Selection } from './selection.ts';
 import { Stats } from './stats.ts';
+import { TagEditor } from './tagEditor.ts';
 import { UndoStack } from './undo.ts';
 import { viewRows, type SongOrder } from './viewRows.ts';
 import {
@@ -48,7 +49,7 @@ import {
   type View,
 } from './views.ts';
 
-export type DialogKind = 'commands' | 'shortcuts' | 'unreadable' | 'addToPlaylist';
+export type DialogKind = 'commands' | 'shortcuts' | 'unreadable' | 'addToPlaylist' | 'songInfo';
 
 /** How often the song list takes in what a scan has found so far (PRD §3.3). */
 export const SCAN_UPDATE_MS = 500;
@@ -161,6 +162,8 @@ export class AppController {
   readonly playlists: Playlists;
   /** Favourites and play counts (§10). */
   readonly stats: Stats;
+  /** Song Info (§11.1). */
+  readonly tags: TagEditor;
 
   readonly #index: IndexStore | undefined;
   readonly #now: () => Date;
@@ -210,6 +213,12 @@ export class AppController {
       say: (text, notice) => this.say(text, notice),
       now: () => this.#now().getTime(),
       ...(options.clock ? { clock: options.clock } : {}),
+    });
+    this.tags = new TagEditor({
+      source: () => this.source.peek(),
+      undo: this.undo,
+      refresh: () => this.rescan(),
+      close: () => this.close(),
     });
     this.#queueKeeper = new QueueKeeper({
       index: options.index,

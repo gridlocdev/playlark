@@ -8,7 +8,7 @@ Each slice leaves `just check` green and the app working. Tick a slice when it l
 - [x] **4. Gapless playback and the queue** (§8, §15). Gapless scheduling and trimming with the offline join test, seeking, volume, the queue panel, Play Next, Add to Queue, reorder, shuffle, repeat, queue restore, Media Session, ReplayGain, crossfade; Shuffle buttons on album, artist and folder pages; the song context menu (§14).
 - [x] **5. Playlists** (§9). `.m3u8`/`.m3u` reading and writing, the sidebar, editing, undo, atomic saves with versions, conflicts, outside changes.
 - [x] **6. Favourites and play counts** (§10). Stats file, hearts, counted plays, Favourites, Recently Added, Most Played. A moved song keeps its stats through `findMoves` (§3.3).
-- [ ] **7. Tag editing: MP3, FLAC, M4A** (§11). Writers, the Song Info dialog, the safety checks, the trash, undo.
+- [x] **7. Tag editing: MP3, FLAC, M4A** (§11). Writers, the Song Info dialog, the safety checks, the trash, undo.
 - [ ] **8. Tag editing: Ogg and WAV** (§11.2).
 - [ ] **9. NAS server** (§18). API, range streaming, server-side scan and watching, events, playlist and tag writes, stats, `--read-only`, the phone layout and PWA, Docker.
 - [ ] **10. CLI** (§20). Commands, `--json`, `play`, the agent skill file.

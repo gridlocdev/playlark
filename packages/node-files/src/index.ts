@@ -30,3 +30,4 @@ export {
   writePlaylistFile,
   type PlaylistResult,
 } from './playlistFiles.ts';
+export { tagResult, writeSongTags, type FileFacts, type TagResult } from './songFiles.ts';

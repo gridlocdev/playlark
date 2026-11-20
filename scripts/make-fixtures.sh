@@ -86,6 +86,9 @@ tone_cover 1 "$CORE/picture.flac" "$CORE/cover.png" -c:a flac \
   -metadata REPLAYGAIN_TRACK_GAIN="+1.25 dB" -metadata REPLAYGAIN_ALBUM_PEAK="0.5"
 tone_cover 1 "$CORE/covr.m4a" "$CORE/cover.png" -c:a aac -b:a 64k \
   -metadata title="M4A Cover" -metadata artist="M4A Artist"
+# The header before the audio, so a tag edit that grows it has to move every chunk offset (PRD §11.2).
+tone 1 440 44100 "$CORE/faststart.m4a" -c:a aac -b:a 64k -movflags +faststart \
+  -metadata title="Fast Start" -metadata artist="M4A Artist" -metadata track="2/9"
 
 # ── A second library: a song with its own cover, and a file that can't be read ──────────────────────
 mkdir -p "$COVERS/Gallery"

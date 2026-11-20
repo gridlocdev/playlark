@@ -242,14 +242,17 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 - **Song Info…** (⌘I) on one or more selected songs. Fields: Title, Artist, Album, Album Artist, Track (n of m), Disc (n of m), Year, Genre, Compilation, and the cover (Choose Image…, Paste, Remove). The dialog also shows the read-only file facts (§4.2) and path.
 - With several songs, fields that differ show "Mixed"; only fields the user changes are written. Title and track can't be changed for several songs at once.
 - **Save** writes the files; the dialog shows progress for more than 5 songs ("Saving 3 of 12…"). Errors are listed per file at the end; files that were written stay written.
-- Every format can be edited: MP3, FLAC, M4A, Ogg (Vorbis and Opus) and WAV.
+- Every format can be edited: MP3, FLAC, M4A, Ogg (Vorbis and Opus) and WAV. A selection mixing formats Playlark can and can't edit writes the ones it can and lists the others.
+- Numbers (track, disc, their totals, year) are whole numbers from 1 to 65535; an empty field takes the tag out. Text fields are trimmed, and an empty one takes the tag out.
+- The cover is a JPEG or PNG. A new cover replaces the front covers (every picture when none is marked front cover); Remove takes every picture out.
+- Where tags can't be saved (§11.5), the dialog shows them read-only with "Edit tags in the desktop app or through the NAS server."
 
 ### §11.2 Writers
 
 - Only the fields changed are touched; every other frame, comment, atom and chunk is kept as it was, in order.
-- MP3: an ID3v2.3 tag stays 2.3 (UTF-16 text); 2.4 stays 2.4 (UTF-8); a file without ID3v2 gets 2.4. An existing ID3v1 tag is updated too (truncated to its 30-byte fields). Existing padding is used when the new tag fits, else the tag is rewritten with 2 KB padding.
+- MP3: an ID3v2.3 tag stays 2.3 (UTF-16 text); 2.4 stays 2.4 (UTF-8); a file without ID3v2 gets 2.4. An ID3v2.2 tag isn't edited ("Playlark can’t edit ID3v2.2 tags."). An existing ID3v1 tag is updated too (truncated to its 30-byte fields). Existing padding is used when the new tag fits, else the tag is rewritten with 2 KB padding.
 - FLAC: the `VORBIS_COMMENT` and `PICTURE` blocks are replaced, using `PADDING` when it fits.
-- M4A: `moov/udta/meta/ilst` is rewritten; when `moov` grows or shrinks and sits before `mdat`, every `stco`/`co64` chunk offset is shifted by the difference. A `free` atom next to `moov` is used when it fits.
+- M4A: `moov/udta/meta/ilst` is rewritten; when `moov` grows or shrinks and sits before `mdat`, every `stco`/`co64` chunk offset is shifted by the difference. A `free` atom next to `moov` is used when it fits. A fragmented MP4 (`moof`) isn't edited.
 - Ogg: the comment header packet is rewritten, pages re-laid, every later page renumbered and its CRC recomputed. The Opus `OpusTags` and Vorbis comment packet (with its framing bit) follow their specs.
 - WAV: the `id3 ` chunk is written (created when missing; `LIST/INFO` is updated for the fields it has), the RIFF size fixed, chunks kept word-aligned.
 

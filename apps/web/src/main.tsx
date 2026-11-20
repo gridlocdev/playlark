@@ -42,6 +42,7 @@ function desktopLibrary(bridge: PlaylarkNative, folder: NativeFolder) {
     list: () => bridge.listFiles(),
     mediaUrl: (path) => `app://playlark/media/${encodePath(path)}`,
     playlists: bridge.playlists,
+    tags: bridge.tags,
   });
 }
 

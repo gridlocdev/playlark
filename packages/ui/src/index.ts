@@ -43,11 +43,14 @@ export {
   SERVER_TIMEOUT_MS,
   serverLibrary,
   urlLibrary,
+  type FileFacts,
   type LibrarySource,
   type PlaylistResult,
   type PlaylistWriteError,
   type PlaylistWriter,
   type SourceKind,
+  type TagWriteResult,
+  type TagWriter,
 } from './library/sources.ts';
 export {
   bridgeIndexStore,

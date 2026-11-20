@@ -36,6 +36,7 @@ Favourites, Recently Added and Most Played are under **Collections** in the side
 | Select all the songs in the view | **⌘A** | **Ctrl+A** |
 | Select the playing song | **⌘L** | **Ctrl+L** |
 | Favourite the selected songs (or the song playing) | **⌥⌘F**, or the **♥** in the list or the now-playing bar | **Ctrl+Alt+F**, or the **♥** |
+| Song Info: see and edit the tags of the selected songs | **⌘I** | **Ctrl+I** |
 
 ## Playback
 
@@ -51,7 +52,7 @@ Favourites, Recently Added and Most Played are under **Collections** in the side
 | Shuffle on or off                              | **⌘S**  | **Ctrl+S**         |
 | Repeat: off, all, one                          | **⌥⌘R** | **Ctrl+Alt+R**     |
 
-Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Favourite**, **Go to Album** and **Go to Artist**, and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
+Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Favourite**, **Song Info…**, **Go to Album** and **Go to Artist**, and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
 
 The media keys on the keyboard, headphones and the lock screen also play, pause and skip.
 

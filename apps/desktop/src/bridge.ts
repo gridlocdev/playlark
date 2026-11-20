@@ -20,6 +20,7 @@ export const Channels = {
   writePlaylist: 'playlark:write-playlist',
   renamePlaylist: 'playlark:rename-playlist',
   trashPlaylist: 'playlark:trash-playlist',
+  writeTags: 'playlark:write-tags',
 } as const;
 
 /** One item of the menu bar the page sends, as `NativeMenuItem` in @playlark/ui. */
