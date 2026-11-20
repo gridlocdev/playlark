@@ -3,7 +3,7 @@
  * the files are in memory, in a browser folder, on the NAS or on disk behind the desktop app.
  */
 import type { ByteSource, LibraryFile, ScanSource } from '@playlark/core';
-import { isLibraryPath, isSkippedName, memorySource } from '@playlark/core';
+import { isLibraryPath, isPlaylistPath, isSkippedName, memorySource, sha256Hex } from '@playlark/core';
 
 export type SourceKind = 'memory' | 'browser' | 'nas' | 'desktop';
 
@@ -13,24 +13,83 @@ export interface LibrarySource extends ScanSource {
   readonly name: string;
   /** The folder's full path or address, when there is one to show on hover. */
   readonly where?: string;
-  /** A song's whole file, for decoding. */
+  /** A song's or a playlist's whole file. */
   bytes(path: string): Promise<ArrayBuffer>;
+  /** Writes playlists (PRD §9.3); absent where they can't be edited (the browser folder, §17). */
+  readonly playlists?: PlaylistWriter;
 }
 
-/** A library held in memory (tests and the scenarios' fake folder). */
-export function memoryLibrary(name: string, files: Readonly<Record<string, Uint8Array>>): LibrarySource {
-  const list: LibraryFile[] = Object.entries(files).map(([path, b]) => ({ path, size: b.length, mtime: 0 }));
+/** Why a playlist write was refused: a conflict (`changed`, `deleted`, `exists`) or a failure. */
+export type PlaylistWriteError =
+  'changed' | 'deleted' | 'exists' | 'not-found' | 'outside' | 'busy' | 'failed';
+
+/** What a playlist write gives back: the file's new version, or why it was refused. */
+export type PlaylistResult =
+  | { readonly ok: true; readonly version: string }
+  | { readonly ok: false; readonly code: PlaylistWriteError; readonly message: string };
+
+/**
+ * Playlist writes in the music folder (PRD §9.3). Each carries the version last read (the SHA-256 of the bytes in
+ * hex), and is refused when the file is no longer at it.
+ */
+export interface PlaylistWriter {
+  /** Writes over version `base`; null creates the file, refused when it exists. */
+  write(path: string, bytes: Uint8Array, base: string | null): Promise<PlaylistResult>;
+  /** Renames a playlist; refused when `to` exists. */
+  rename(from: string, to: string): Promise<PlaylistResult>;
+  /** Moves the playlist to the trash if it is still at `base` (§11.4). */
+  trash(path: string, base: string): Promise<PlaylistResult>;
+}
+
+/**
+ * A library held in memory (tests and the scenarios' fake folder). Its playlists can be written, and `files` is
+ * changed in place, so a test can also change a playlist "somewhere else".
+ */
+export function memoryLibrary(name: string, files: Record<string, Uint8Array>): LibrarySource {
   const get = (path: string) => {
     const b = files[path];
     if (!b) throw new Error(`${path} is not in the folder.`);
     return b;
   };
+  const versionOf = (path: string) => (files[path] ? sha256Hex(files[path]) : null);
+  const refuse = (code: PlaylistWriteError, message: string) =>
+    Promise.resolve<PlaylistResult>({ ok: false, code, message });
+  const playlists: PlaylistWriter = {
+    write: (path, bytes, base) => {
+      if (!isPlaylistPath(path)) return refuse('outside', 'That is not a playlist.');
+      const found = versionOf(path);
+      if (base === null && found !== null) return refuse('exists', 'It already exists.');
+      if (base !== null && found === null) return refuse('deleted', 'It was deleted somewhere else.');
+      if (base !== null && found !== base) return refuse('changed', 'It changed somewhere else.');
+      files[path] = bytes.slice();
+      return Promise.resolve({ ok: true, version: sha256Hex(bytes) });
+    },
+    rename: (from, to) => {
+      const found = versionOf(from);
+      if (found === null) return refuse('deleted', 'It was deleted somewhere else.');
+      if (from.toLowerCase() !== to.toLowerCase() && files[to]) return refuse('exists', 'It already exists.');
+      files[to] = get(from);
+      if (to !== from) delete files[from];
+      return Promise.resolve({ ok: true, version: found });
+    },
+    trash: (path, base) => {
+      const found = versionOf(path);
+      if (found === null) return refuse('deleted', 'It was deleted somewhere else.');
+      if (found !== base) return refuse('changed', 'It changed somewhere else.');
+      delete files[path];
+      return Promise.resolve({ ok: true, version: found });
+    },
+  };
   return {
     kind: 'memory',
     name,
-    list: () => Promise.resolve(list),
+    list: () =>
+      Promise.resolve(
+        Object.entries(files).map(([path, b]): LibraryFile => ({ path, size: b.length, mtime: 0 })),
+      ),
     open: (f) => Promise.resolve(memorySource(get(f.path))),
     bytes: (path) => Promise.resolve(get(path).slice().buffer),
+    playlists,
   };
 }
 
@@ -92,6 +151,7 @@ export function urlLibrary(options: {
   readonly kind: 'nas' | 'desktop';
   readonly name: string;
   readonly where?: string;
+  readonly playlists?: PlaylistWriter;
   readonly list: () => Promise<readonly LibraryFile[]>;
   /** The URL a song's bytes are served from. */
   readonly mediaUrl: (path: string) => string;
@@ -102,6 +162,7 @@ export function urlLibrary(options: {
     kind: options.kind,
     name: options.name,
     ...(options.where ? { where: options.where } : {}),
+    ...(options.playlists ? { playlists: options.playlists } : {}),
     list: options.list,
     open: (f) => Promise.resolve(rangeSource(options.mediaUrl(f.path), f.size, fetcher)),
     bytes: async (path) => {

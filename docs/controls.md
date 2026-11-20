@@ -48,7 +48,7 @@ Every shortcut, on macOS and on Windows and Linux. The Keyboard Shortcuts window
 | Shuffle on or off                              | **⌘S**  | **Ctrl+S**         |
 | Repeat: off, all, one                          | **⌥⌘R** | **Ctrl+Alt+R**     |
 
-Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Go to Album** and **Go to Artist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
+Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Go to Album** and **Go to Artist**, and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
 
 The media keys on the keyboard, headphones and the lock screen also play, pause and skip.
 
@@ -67,6 +67,20 @@ The media keys on the keyboard, headphones and the lock screen also play, pause 
 | Remove the song from the queue | **⌫** or **⌦**, or its **×** | **Backspace** or **Delete**, or its **×** |
 | Move a song                    | drag it                      | drag it                                   |
 | Clear Up Next                  | **Clear**                    | **Clear**                                 |
+
+## Playlists
+
+| Action | macOS | Windows / Linux |
+| --- | --- | --- |
+| New playlist, with the selected songs | **⌘N** | **Ctrl+N** |
+| Add the selected songs to a playlist | drag them onto it in the sidebar, or right-click › **Add to Playlist…** | the same |
+| Take the selected songs out of the playlist | **⌫** or **⌦** | **Backspace** or **Delete** |
+| Move songs in the playlist | drag them | drag them |
+| Rename the playlist | right-click it › **Rename Playlist**, type, **↩** (**⎋** keeps the name) | the same, with **Enter** (**Esc** keeps the name) |
+| Undo the last playlist change | **⌘Z** | **Ctrl+Z** |
+| Redo it | **⇧⌘Z** | **Ctrl+Shift+Z** |
+
+Right-click a playlist in the sidebar for **Play Playlist**, **Shuffle Playlist**, **Rename Playlist** and **Delete Playlist**. Deleting moves the file to Playlark's trash; Undo puts it back. Playlists are edited in the desktop app; a folder opened in the browser shows them but can't change them.
 
 ## Help
 

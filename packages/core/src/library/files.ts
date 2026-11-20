@@ -49,9 +49,15 @@ export function isCoverPath(path: string): boolean {
   return !path.split('/').some(isSkippedName) && coverRank(path) >= 0;
 }
 
-/** True for every file a listing hands the scan: music files and folder covers. */
+/** True for a playlist file (PRD §9.1): `.m3u8` or `.m3u`, anywhere in the folder. */
+export function isPlaylistPath(path: string): boolean {
+  if (path.split('/').some(isSkippedName)) return false;
+  return /\.m3u8?$/i.test(path);
+}
+
+/** True for every file a listing hands the app: music files, folder covers and playlists. */
 export function isLibraryPath(path: string): boolean {
-  return isMusicPath(path) || isCoverPath(path);
+  return isMusicPath(path) || isCoverPath(path) || isPlaylistPath(path);
 }
 
 /** The folder part of a path, "" at the top. */

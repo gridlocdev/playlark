@@ -28,4 +28,10 @@ contextBridge.exposeInMainWorld('playlarkNative', {
     loadQueue: () => ipcRenderer.invoke('playlark:load-queue'),
     saveQueue: (text: string) => ipcRenderer.invoke('playlark:save-queue', text),
   },
+  playlists: {
+    write: (path: string, data: Uint8Array, base: string | null) =>
+      ipcRenderer.invoke('playlark:write-playlist', path, data, base),
+    rename: (from: string, to: string) => ipcRenderer.invoke('playlark:rename-playlist', from, to),
+    trash: (path: string, base: string) => ipcRenderer.invoke('playlark:trash-playlist', path, base),
+  },
 });

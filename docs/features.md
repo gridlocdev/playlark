@@ -77,3 +77,11 @@ A file that can't be read stays in the list, greyed out. The status bar says how
 ## Remembering the library
 
 Playlark keeps what it read from the folder (the desktop app in its data folder, the browser in its own storage) and shows it at once the next time. A rescan then reads only the files that changed, and the list fills in every half second while it runs.
+
+## Playlists
+
+Every `.m3u8` and `.m3u` file in the music folder shows under **Playlists** in the sidebar, named after its file. A playlist plays like any other list. A song it names that isn't in the folder shows greyed as "Missing: <path>", stays in the file and is skipped when played.
+
+## Editing playlists
+
+In the desktop app, **New Playlist** (⌘N) makes `Playlists/New Playlist.m3u8` with the selected songs and lets you name it. Drag songs onto a playlist in the sidebar, or use **Add to Playlist…**, to add them at the end. Inside a playlist, drag songs to reorder them and press Delete to take them out. Rename and delete a playlist from its right-click menu. A deleted playlist goes to Playlark's trash in its data folder for 30 days. Every change is saved at once and can be undone with ⌘Z. If another app changes a playlist while you are editing it, Playlark asks whether to keep yours or take theirs.

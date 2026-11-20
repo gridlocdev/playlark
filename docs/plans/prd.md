@@ -205,15 +205,16 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 ### §9.2 Editing
 
 - **New Playlist** (⌘N): created with the selected songs (or empty), named "New Playlist", name field focused for renaming.
-- Add songs: **Add to Playlist ▸** in the context menu, or drag songs onto a playlist in the sidebar. Duplicates are allowed. Notice: "Added 3 songs to <playlist>."
+- Add songs: **Add to Playlist…** in the context menu or ⌘K (a list of the playlists to pick from by typing, with New Playlist first), or drag songs onto a playlist in the sidebar. Duplicates are allowed. Notice: "Added 3 songs to <playlist>."
 - In a playlist: drag to reorder, Delete removes the selected entries from the playlist (never the files).
 - **Rename** changes the file name. **Delete Playlist** moves the file to Playlark's trash (§11.4) with "Deleted <playlist>." and Undo.
-- Every playlist edit is an undo step (⌘Z / ⇧⌘Z), saved at once.
+- Every playlist edit is an undo step (⌘Z / ⇧⌘Z), saved at once. In a text field ⌘Z undoes the typing instead.
+- On a playlist in the sidebar, the right-click menu has **Play Playlist**, **Shuffle Playlist**, **Rename Playlist** and **Delete Playlist**; they act on the playlist shown when chosen from ⌘K or the menu bar.
 
 ### §9.3 Saving and conflicts
 
 - Saves are atomic (temp file, flush, rename; a symlink stays a symlink) and carry the version (SHA-256 of the bytes) last read. A lock file (`.<name>.lock`, taken over after 10 s) keeps the desktop app, the NAS server and the CLI from writing at once.
-- A playlist changed elsewhere while Playlark has unsaved changes opens "<Playlist> changed somewhere else" with **Keep Mine** (write mine over it) and **Use Theirs**. Nothing merges or overwrites without the choice.
+- A playlist changed elsewhere while Playlark has unsaved changes (or whose save finds it changed) opens "<Playlist> changed somewhere else" with **Keep Mine** (write mine over it) and **Use Theirs** (an undo step, so Undo brings mine back). Escape leaves both as they are, unsaved, and the next save or check asks again. Nothing merges or overwrites without the choice.
 - Changes made elsewhere are picked up when the window comes to the front and every 15 s, as one undo step with "Updated <playlist> with changes made elsewhere."
 - A failed save is retried twice (300 ms, 600 ms), then the status bar shows "Couldn't save <playlist>." with **Try Again**.
 
@@ -301,7 +302,7 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 | Song     | Song Info…                                      | ⌘I                          |
 | Song     | Favourite                                       | ⌥⌘F                         |
 | Song     | Play Next / Add to Queue                        | —                           |
-| Song     | Add to Playlist ▸                               | —                           |
+| Song     | Add to Playlist…                                | —                           |
 | Song     | Go to Album / Go to Artist / Go to Current Song | — / — / ⌘L                  |
 | Controls | Play / Pause                                    | Space (outside text fields) |
 | Controls | Next / Previous                                 | ⌘→ / ⌘←                     |
@@ -320,7 +321,7 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 - Shuffle is ⌘S because Playlark has nothing to save by hand.
 - Select All (⌘A) selects the text in a text field, else every song in the view. In the desktop app it replaces the Edit menu's built-in Select All, so one command does both.
 - Find (⌘F) and Select All work while the search field has focus; the other shortcuts with ⌘ wait until it hasn't.
-- Context menu on songs: Play, Play Next, Add to Queue, Add to Playlist ▸, Favourite, Song Info…, Go to Album, Go to Artist, Show in Finder (desktop), and Remove from Playlist inside a playlist. On playlists in the sidebar: Play, Shuffle, Rename, Delete Playlist, Show in Finder.
+- Context menu on songs: Play, Play Next, Add to Queue, Add to Playlist…, Favourite, Song Info…, Go to Album, Go to Artist, Show in Finder (desktop), and Remove from Playlist inside a playlist. On playlists in the sidebar: Play, Shuffle, Rename, Delete Playlist, Show in Finder.
 
 ## §15 Media keys and Now Playing
 

@@ -1,9 +1,13 @@
-import { useRef } from 'preact/hooks';
+import { useRef, useState } from 'preact/hooks';
 import type { Song, SongColumn } from '@playlark/core';
 import { formatTime, useVirtualRows } from '@playlark/ui';
 import type { AppController } from './controller.ts';
 import { PlayingMark } from './PlayingMark.tsx';
+import { MISSING } from './playlists.ts';
 import { click, only, step } from './selection.ts';
+
+/** The drag data type that carries song paths, as JSON, onto a playlist in the sidebar (§9.2). */
+export const SONGS_TYPE = 'application/x-playlark-songs';
 
 /** Each row's height in px: the list draws only the rows in view (PRD §6.1), so every row is the same height. */
 export const ROW_HEIGHT = 28;
@@ -21,9 +25,9 @@ const TITLES: Record<Column, string> = {
 };
 
 /** One line of the list: a song, or the heading over a disc's songs (§6.2 album page). */
-type Line = { readonly song: Song; readonly index: number } | { readonly disc: number };
+type Line = { readonly song: Song; readonly index: number; readonly key: string } | { readonly disc: number };
 
-const rowId = (path: string) => `pl-row-${encodeURIComponent(path)}`;
+const rowId = (key: string) => `pl-row-${encodeURIComponent(key)}`;
 
 /**
  * A list of songs with the view's selection (PRD §6.2, §6.3). The rows are `app.rows`, so Play, the keys and
@@ -35,6 +39,7 @@ export function SongList({
   columns,
   sortable = false,
   discs = false,
+  onMove,
 }: {
   readonly app: AppController;
   readonly label: string;
@@ -43,9 +48,12 @@ export function SongList({
   readonly sortable?: boolean;
   /** Heads each disc's songs with its number. */
   readonly discs?: boolean;
+  /** Rows can be dragged to a new place (a playlist, §9.2): the rows at `indexes` go to the gap `to`. */
+  readonly onMove?: (indexes: readonly number[], to: number) => void;
 }) {
   const songs = app.rows.value;
-  const paths = app.rowPaths.value;
+  const keys = app.rowKeys.value;
+  const [gap, setGap] = useState<number | null>(null);
   const selection = app.selection.value;
   const playing = app.player.currentPath.value;
   const state = app.player.state.value;
@@ -60,23 +68,53 @@ export function SongList({
       disc = song.disc ?? 1;
       lines.push({ disc });
     }
-    lines.push({ song, index });
+    lines.push({ song, index, key: keys[index]! });
   });
   const focusLine =
-    selection.cursor === null ? -1 : lines.findIndex((l) => 'song' in l && l.song.path === selection.cursor);
+    selection.cursor === null ? -1 : lines.findIndex((l) => 'key' in l && l.key === selection.cursor);
   const { start, end } = useVirtualRows(scroller, lines.length, ROW_HEIGHT, focusLine, HEADER_HEIGHT);
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.metaKey || e.ctrlKey || e.altKey || app.blocked()) return;
-    const next = step(selection, paths, e.key, e.shiftKey);
+    const next = step(selection, keys, e.key, e.shiftKey);
     if (!next) return;
     e.preventDefault();
     app.selection.value = next;
   };
-  const pick = (e: MouseEvent, path: string) => {
+  const pick = (e: MouseEvent, key: string) => {
     const how = e.shiftKey ? 'extend' : e.metaKey || e.ctrlKey ? 'toggle' : 'only';
-    app.selection.value = click(selection, paths, path, how);
+    app.selection.value = click(selection, keys, key, how);
     grid.current?.focus();
+  };
+  /** Dragging starts from the selection, or just the row when it is outside it. */
+  const dragged = (key: string): number[] =>
+    selection.paths.has(key) ? app.selectedIndexes() : [keys.indexOf(key)];
+  const startDrag = (e: DragEvent, key: string) => {
+    const rows = dragged(key).filter((i) => songs[i]!.error !== MISSING);
+    if (!e.dataTransfer || rows.length === 0) return e.preventDefault();
+    e.dataTransfer.effectAllowed = 'copyMove';
+    e.dataTransfer.setData(SONGS_TYPE, JSON.stringify(rows.map((i) => songs[i]!.path)));
+    e.dataTransfer.setData('text/plain', rows.map((i) => songs[i]!.title).join('\n'));
+    moving.current = onMove ? dragged(key) : null;
+  };
+  const moving = useRef<number[] | null>(null);
+  const over = (e: DragEvent, index: number) => {
+    if (!moving.current) return;
+    e.preventDefault();
+    const box = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const to = e.clientY > box.top + box.height / 2 ? index + 1 : index;
+    if (to !== gap) setGap(to);
+  };
+  const drop = (e: DragEvent) => {
+    if (!moving.current || gap === null) return;
+    e.preventDefault();
+    onMove?.(moving.current, gap);
+    moving.current = null;
+    setGap(null);
+  };
+  const endDrag = () => {
+    moving.current = null;
+    setGap(null);
   };
   const span = columns.length + 1;
 
@@ -92,6 +130,9 @@ export function SongList({
         tabIndex={0}
         aria-activedescendant={selection.cursor !== null ? rowId(selection.cursor) : undefined}
         onKeyDown={onKeyDown}
+        onDragLeave={(e) => {
+          if (!(e.currentTarget as Node).contains(e.relatedTarget as Node | null)) setGap(null);
+        }}
       >
         <thead>
           <tr aria-rowindex={1}>
@@ -128,21 +169,33 @@ export function SongList({
               </tr>
             ) : (
               <SongRow
-                key={line.song.path}
+                key={line.key}
+                id={rowId(line.key)}
                 song={line.song}
                 rowIndex={start + i + 2}
                 stripe={line.index % 2 === 1}
                 columns={columns}
-                selected={selection.paths.has(line.song.path)}
+                selected={selection.paths.has(line.key)}
                 playing={line.song.path === playing ? state : null}
-                onPick={(e) => pick(e, line.song.path)}
+                drop={
+                  gap === line.index
+                    ? 'before'
+                    : gap === songs.length && line.index === songs.length - 1
+                      ? 'after'
+                      : null
+                }
+                onPick={(e) => pick(e, line.key)}
                 onMenu={(e) => {
                   // A right-click on a song outside the selection selects just it, as the Music app does.
-                  if (!selection.paths.has(line.song.path)) app.selection.value = only(line.song.path);
+                  if (!selection.paths.has(line.key)) app.selection.value = only(line.key);
                   grid.current?.focus();
                   app.menu.value = { x: e.clientX, y: e.clientY };
                 }}
-                onPlay={() => void app.playPath(line.song.path)}
+                onPlay={() => void app.playRow(line.key)}
+                onDragStart={(e) => startDrag(e, line.key)}
+                onDragOver={(e) => over(e, line.index)}
+                onDrop={drop}
+                onDragEnd={endDrag}
               />
             ),
           )}
@@ -175,6 +228,7 @@ function cell(song: Song, column: Column): string {
 }
 
 function SongRow(props: {
+  readonly id: string;
   readonly song: Song;
   readonly rowIndex: number;
   readonly stripe: boolean;
@@ -182,31 +236,46 @@ function SongRow(props: {
   readonly selected: boolean;
   /** The player's state when this is the playing song. */
   readonly playing: string | null;
+  /** Where a dragged entry would land, shown as a line. */
+  readonly drop: 'before' | 'after' | null;
   readonly onPick: (e: MouseEvent) => void;
   readonly onMenu: (e: MouseEvent) => void;
   readonly onPlay: () => void;
+  readonly onDragStart: (e: DragEvent) => void;
+  readonly onDragOver: (e: DragEvent) => void;
+  readonly onDrop: (e: DragEvent) => void;
+  readonly onDragEnd: () => void;
 }) {
   const { song: s } = props;
+  const missing = s.error === MISSING;
   const classes = [
     s.error ? 'pl-unreadable' : '',
     props.playing ? 'pl-playing' : '',
     props.stripe ? 'pl-stripe' : '',
+    props.drop ? `pl-drop-${props.drop}` : '',
   ]
     .filter(Boolean)
     .join(' ');
   return (
     <tr
-      id={rowId(s.path)}
+      id={props.id}
       role="row"
       aria-rowindex={props.rowIndex}
       aria-selected={props.selected}
       class={classes || undefined}
-      title={s.error ? `Can’t read this file: ${s.error}` : s.path}
+      title={missing ? s.error : s.error ? `Can’t read this file: ${s.error}` : s.path}
+      draggable={!missing}
       onMouseDown={(e) => {
-        // Keep focus on the table, so the keys keep working after a click.
-        e.preventDefault();
-        if (e.button === 0) props.onPick(e);
+        // A plain press on a selected row waits for the click, so the selection can be dragged.
+        if (e.button === 0 && !(props.selected && !e.shiftKey && !e.metaKey && !e.ctrlKey)) props.onPick(e);
       }}
+      onClick={(e) => {
+        if (props.selected && !e.shiftKey && !e.metaKey && !e.ctrlKey) props.onPick(e);
+      }}
+      onDragStart={props.onDragStart}
+      onDragOver={props.onDragOver}
+      onDrop={props.onDrop}
+      onDragEnd={props.onDragEnd}
       onContextMenu={(e) => {
         e.preventDefault();
         props.onMenu(e);

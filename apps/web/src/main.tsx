@@ -26,6 +26,8 @@ import pkg from '../package.json';
 const TICK_MS = 250;
 /** How often the queue is checked for changes to keep (PRD §8.4). */
 const KEEP_QUEUE_MS = 1_000;
+/** How often open playlists are checked for changes made elsewhere (PRD §9.3). */
+const CHECK_PLAYLISTS_MS = 15_000;
 
 const root = document.getElementById('app')!;
 const native = nativeBridge();
@@ -38,6 +40,7 @@ function desktopLibrary(bridge: PlaylarkNative, folder: NativeFolder) {
     where: folder.path,
     list: () => bridge.listFiles(),
     mediaUrl: (path) => `app://playlark/media/${encodePath(path)}`,
+    playlists: bridge.playlists,
   });
 }
 
@@ -115,6 +118,8 @@ async function start(): Promise<void> {
   every(TICK_MS, () => app.player.tick());
   every(KEEP_QUEUE_MS, () => void app.keepQueue());
   addEventListener('pagehide', () => void app.keepQueue());
+  every(CHECK_PLAYLISTS_MS, () => void app.playlists.checkOutside());
+  addEventListener('focus', () => void app.playlists.checkOutside());
   startMediaSession(app, catalog);
   if (import.meta.env.DEV) Object.assign(globalThis, { playlark: { app, catalog } });
 

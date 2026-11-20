@@ -18,3 +18,14 @@ export {
   type IndexFolder,
   type StoredCover,
 } from './indexFolder.ts';
+export {
+  TRASH_FOLDER,
+  TRASH_KEEP_DAYS,
+  emptyOldTrash,
+  playlistResult,
+  playlistTarget,
+  renamePlaylistFile,
+  trashPlaylistFile,
+  writePlaylistFile,
+  type PlaylistResult,
+} from './playlistFiles.ts';

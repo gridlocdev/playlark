@@ -1,7 +1,7 @@
 // Desktop smoke test: the built Electron app starts headless (no window, Dock icon, sound or system dialog) on a
 // throwaway profile, lists the fixture folder and plays it. `just e2e-desktop` builds it first. The throwaway
 // profile matters: the app must never read the owner's settings, window state or music folder.
-import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,7 @@ import {
   expect,
   nowPlaying,
   runCommand,
+  seedMix,
   songs,
   test,
   titles,
@@ -181,4 +182,84 @@ test.describe('Desktop app', () => {
         .toBe(false);
     });
   }
+});
+
+test.describe('Editing playlists', () => {
+  test('makes, fills, renames and deletes a playlist in the folder, with Undo', async () => {
+    seedMix();
+    const temp = realpathSync(mkdtempSync(path.join(tmpdir(), 'playlark-e2e-')));
+    const profile = path.join(temp, 'profile');
+    const app = await electron.launch({
+      cwd: DESKTOP,
+      args: ['out/main.js'],
+      env: { ...process.env, PLAYLARK_HEADLESS: '1', PLAYLARK_USER_DATA: profile, PLAYLARK_MUSIC: DATA },
+    });
+    const file = (name: string) => path.join(DATA, 'Playlists', name);
+    const entries = (name: string) =>
+      readFileSync(file(name), 'utf8')
+        .split('\n')
+        .filter((l) => l && !l.startsWith('#'));
+    try {
+      const window = await app.firstWindow();
+      const errors = watchErrors(window);
+      await waitForApp(window);
+      const sidebar = window.getByRole('list', { name: 'Playlists' });
+      await expect(sidebar.getByRole('button')).toHaveText(['Mix']);
+
+      // ⌘N with a song selected: the new playlist holds it, and its name field is ready.
+      await songs(window)
+        .getByRole('row', { name: /Salt Air/ })
+        .click();
+      await window.keyboard.press('ControlOrMeta+KeyN');
+      const name = sidebar.getByRole('textbox');
+      await expect(name).toBeFocused();
+      await window.keyboard.type('Road Trip');
+      await window.keyboard.press('Enter');
+      await expect(sidebar.getByRole('button')).toHaveText(['Mix', 'Road Trip']);
+      await expect.poll(() => existsSync(file('Road Trip.m3u8'))).toBe(true);
+      expect(entries('Road Trip.m3u8')).toEqual(['../Northwind Quartet/Harbour Lights/02 Salt Air.flac']);
+
+      // Drag a song onto the playlist in the sidebar.
+      await window.getByRole('button', { name: 'Songs' }).click();
+      await songs(window)
+        .getByRole('row', { name: /Night Bus/ })
+        .dragTo(sidebar.getByRole('button', { name: 'Road Trip' }));
+      await expect(window.locator('.pl-status')).toContainText('Added 1 song to Road Trip.');
+      await expect
+        .poll(() => entries('Road Trip.m3u8'))
+        .toEqual([
+          '../Northwind Quartet/Harbour Lights/02 Salt Air.flac',
+          '../Paper Kites Club/Small Hours/2-01 Night Bus.opus',
+        ]);
+
+      // Delete in the playlist takes the selected song out; ⌘Z puts it back.
+      await sidebar.getByRole('button', { name: 'Road Trip' }).click();
+      const list = window.getByRole('grid', { name: 'Road Trip' });
+      await list.getByRole('row', { name: /Salt Air/ }).click();
+      await window.keyboard.press('Delete');
+      await expect(list.locator('tbody tr td:nth-child(2)')).toHaveText(['Night Bus']);
+      await expect.poll(() => entries('Road Trip.m3u8')).toHaveLength(1);
+      await window.keyboard.press('ControlOrMeta+KeyZ');
+      await expect(list.locator('tbody tr td:nth-child(2)')).toHaveText(['Salt Air', 'Night Bus']);
+      await expect.poll(() => entries('Road Trip.m3u8')).toHaveLength(2);
+
+      // Delete Playlist from its right-click menu: to the trash in the data folder, and Undo brings it back.
+      await sidebar.getByRole('button', { name: 'Road Trip' }).click({ button: 'right' });
+      await window
+        .getByRole('menu', { name: 'Playlist' })
+        .getByRole('menuitem', { name: 'Delete Playlist' })
+        .click();
+      await expect(window.locator('.pl-status')).toContainText('Deleted Road Trip.');
+      await expect.poll(() => existsSync(file('Road Trip.m3u8'))).toBe(false);
+      const trash = readdirSync(path.join(profile, 'trash'));
+      expect(existsSync(path.join(profile, 'trash', trash[0]!, 'Playlists', 'Road Trip.m3u8'))).toBe(true);
+      await window.locator('.pl-status').getByRole('button', { name: 'Undo' }).click();
+      await expect.poll(() => existsSync(file('Road Trip.m3u8'))).toBe(true);
+      await expect(sidebar.getByRole('button')).toHaveText(['Mix', 'Road Trip']);
+      expect(errors).toEqual([]);
+    } finally {
+      await closeApp(app);
+      rmSync(temp, { recursive: true, force: true });
+    }
+  });
 });

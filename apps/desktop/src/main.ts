@@ -21,7 +21,16 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { indexFolder, listMusicFiles } from '@playlark/node-files';
+import {
+  emptyOldTrash,
+  indexFolder,
+  listMusicFiles,
+  playlistResult,
+  type PlaylistResult,
+  renamePlaylistFile,
+  trashPlaylistFile,
+  writePlaylistFile,
+} from '@playlark/node-files';
 import { Channels, type FolderInfo } from './bridge.ts';
 import { folderExists, folderInfo, saveFolderChoice, startFolder } from './folderChoice.ts';
 import { COVER_PREFIX, MEDIA_PREFIX, coverResponse, mediaResponse } from './media.ts';
@@ -242,6 +251,26 @@ function registerIpc(): void {
     if (!trusted(e) || !Array.isArray(keep) || !keep.every((k) => typeof k === 'string')) return refuse();
     return index.pruneCovers(new Set(keep));
   });
+  // Playlist writes (PRD §9.3): refused unless a folder is open; the outcome comes back as a PlaylistResult.
+  const inFolder = (write: (root: string) => Promise<string>): Promise<PlaylistResult> => {
+    const root = musicFolder;
+    if (!root) return Promise.resolve({ ok: false, code: 'failed', message: 'No music folder is open.' });
+    return playlistResult(() => write(root));
+  };
+  const isText = (v: unknown): v is string => typeof v === 'string';
+  ipcMain.handle(Channels.writePlaylist, (e, rel: unknown, data: unknown, base: unknown) => {
+    if (!trusted(e) || !isText(rel) || !(data instanceof Uint8Array) || !(base === null || isText(base)))
+      return refuse();
+    return inFolder((root) => writePlaylistFile(root, rel, data, base));
+  });
+  ipcMain.handle(Channels.renamePlaylist, (e, from: unknown, to: unknown) => {
+    if (!trusted(e) || !isText(from) || !isText(to)) return refuse();
+    return inFolder((root) => renamePlaylistFile(root, from, to));
+  });
+  ipcMain.handle(Channels.trashPlaylist, (e, rel: unknown, base: unknown) => {
+    if (!trusted(e) || !isText(rel) || !isText(base)) return refuse();
+    return inFolder((root) => trashPlaylistFile(root, rel, base, app.getPath('userData')));
+  });
   ipcMain.on(Channels.setMenu, (e, items: unknown) => {
     if (!trusted(e) || !Array.isArray(items)) return;
     const send = (id: string) => win?.webContents.send(Channels.command, id);
@@ -283,6 +312,8 @@ else {
       return file ? net.fetch(pathToFileURL(file).toString()) : new Response('Forbidden', { status: 403 });
     });
     registerIpc();
+    // Trash older than 30 days goes on start (PRD §11.4).
+    await emptyOldTrash(app.getPath('userData'));
     lastWindow = await loadSavedWindow(windowFile);
     win = createWindow();
     app.on('activate', () => {

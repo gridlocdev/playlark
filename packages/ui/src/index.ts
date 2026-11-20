@@ -44,6 +44,9 @@ export {
   serverLibrary,
   urlLibrary,
   type LibrarySource,
+  type PlaylistResult,
+  type PlaylistWriteError,
+  type PlaylistWriter,
   type SourceKind,
 } from './library/sources.ts';
 export {

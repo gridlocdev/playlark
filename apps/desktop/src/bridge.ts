@@ -15,6 +15,9 @@ export const Channels = {
   pruneCovers: 'playlark:prune-covers',
   loadQueue: 'playlark:load-queue',
   saveQueue: 'playlark:save-queue',
+  writePlaylist: 'playlark:write-playlist',
+  renamePlaylist: 'playlark:rename-playlist',
+  trashPlaylist: 'playlark:trash-playlist',
 } as const;
 
 /** One item of the menu bar the page sends, as `NativeMenuItem` in @playlark/ui. */

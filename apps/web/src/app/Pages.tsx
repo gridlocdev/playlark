@@ -27,6 +27,8 @@ export function viewTitle(app: AppController, view: View): string {
       return view.path ? (view.path.split('/').at(-1) ?? 'Folders') : 'Folders';
     case 'search':
       return 'Search';
+    case 'playlist':
+      return app.playlists.nameOf(view.path);
   }
 }
 
@@ -89,6 +91,12 @@ export function CurrentView({
     }
     case 'search':
       return <SearchPage app={app} query={view.query} />;
+    case 'playlist':
+      return app.playlists.list.value.some((p) => p.path === view.path) ? (
+        <PlaylistPage app={app} path={view.path} />
+      ) : (
+        <Gone text="This playlist is no longer in the music folder." />
+      );
   }
 }
 
@@ -161,6 +169,43 @@ function PlayButtons({
         <Icon name="shuffle" /> Shuffle
       </button>
     </>
+  );
+}
+
+/** A playlist (§9.1): its entries in order, missing ones greyed; drag to reorder when it can be edited (§9.2). */
+function PlaylistPage({ app, path }: { readonly app: AppController; readonly path: string }) {
+  const name = app.playlists.nameOf(path);
+  const loaded = app.playlists.files.value.has(path);
+  const songs = app.rows.value;
+  const editable = app.playlists.editable.value;
+  return (
+    <div class="pl-page">
+      <header class="pl-page-head pl-page-head-plain">
+        <div class="pl-page-text">
+          <h2>{name}</h2>
+          <p class="pl-page-facts">{loaded ? songCount(songs.length) : 'Reading…'}</p>
+          <div class="pl-page-actions">
+            <PlayButtons app={app} name={name} songs={() => app.rows.peek()} />
+          </div>
+        </div>
+      </header>
+      {loaded && songs.length === 0 ? (
+        <Gone
+          text={
+            editable
+              ? 'This playlist is empty. Drag songs onto it in the sidebar, or use Add to Playlist.'
+              : 'This playlist is empty.'
+          }
+        />
+      ) : (
+        <SongList
+          app={app}
+          label={name}
+          columns={['title', 'artist', 'album', 'time']}
+          onMove={editable ? (indexes, to) => void app.playlists.move(path, indexes, to) : undefined}
+        />
+      )}
+    </div>
   );
 }
 

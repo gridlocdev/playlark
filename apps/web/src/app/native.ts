@@ -1,6 +1,6 @@
 /** What the desktop app's preload script puts on `window.playlarkNative` (PRD §16.1). */
 import type { LibraryFile } from '@playlark/core';
-import type { IndexBridge, NativeMenuItem } from '@playlark/ui';
+import type { IndexBridge, NativeMenuItem, PlaylistWriter } from '@playlark/ui';
 
 /** The music folder the desktop app has open. `missing`: the one chosen last time is gone. */
 export interface NativeFolder {
@@ -29,6 +29,8 @@ export interface PlaylarkNative {
   listFiles(): Promise<readonly LibraryFile[]>;
   /** The library index and its covers, kept in the app's data folder (PRD §3.2). */
   readonly index: IndexBridge;
+  /** Writes, renames and trashes playlists in the open folder (PRD §9). */
+  readonly playlists: PlaylistWriter;
 }
 
 export function nativeBridge(): PlaylarkNative | null {

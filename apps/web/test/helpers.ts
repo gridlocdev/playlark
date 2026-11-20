@@ -46,6 +46,11 @@ export class FakeEngine implements AudioEngine {
 
 /** The fixture folder, read into memory. */
 export async function fixtureLibrary(root = LIBRARY): Promise<LibrarySource> {
+  return memoryLibrary('basic', await fixtureFiles(root));
+}
+
+/** The fixture folder's files by path; a memory library over them changes them in place. */
+export async function fixtureFiles(root = LIBRARY): Promise<Record<string, Uint8Array>> {
   const files: Record<string, Uint8Array> = {};
   const walk = async (dir: string) => {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -55,7 +60,7 @@ export async function fixtureLibrary(root = LIBRARY): Promise<LibrarySource> {
     }
   };
   await walk(root);
-  return memoryLibrary('basic', files);
+  return files;
 }
 
 /** A folder chooser that hands out the fixture folder. */

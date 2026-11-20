@@ -5,10 +5,9 @@
 import { batch, computed, signal } from '@preact/signals';
 import {
   buildLibrary,
-  coverIds,
   findMoves,
   fold,
-  makeIndex,
+  isPlaylistPath,
   prepareSearch,
   scanLibrary,
   search,
@@ -22,21 +21,33 @@ import {
 } from '@playlark/core';
 import {
   Player,
-  after,
   debounce,
   every,
-  formatCount,
   type AudioEngine,
   type IndexStore,
   type LibrarySource,
   type PlaybackSettings,
 } from '@playlark/ui';
 import { Covers } from './covers.ts';
+import { loadIndexSongs, saveIndexSongs } from './libraryIndex.ts';
+import { Notices, type Notice } from './notices.ts';
+import { MISSING, Playlists } from './playlists.ts';
 import { QueueKeeper, goneNotice } from './queueKeeper.ts';
 import { NO_SELECTION, keep, only, selectedRows, type Selection } from './selection.ts';
-import { SONGS, back, forward, go, replace, startHistory, type History, type View } from './views.ts';
+import { UndoStack } from './undo.ts';
+import {
+  SONGS,
+  back,
+  forward,
+  go,
+  playlistMoved,
+  replace,
+  startHistory,
+  type History,
+  type View,
+} from './views.ts';
 
-export type DialogKind = 'commands' | 'shortcuts' | 'unreadable';
+export type DialogKind = 'commands' | 'shortcuts' | 'unreadable' | 'addToPlaylist';
 
 /** How often the song list takes in what a scan has found so far (PRD §3.3). */
 export const SCAN_UPDATE_MS = 500;
@@ -49,17 +60,10 @@ export interface SongOrder {
   readonly reverse: boolean;
 }
 
-export interface Notice {
-  readonly text: string;
-  readonly tone?: 'error';
-  /** Stays until dismissed or replaced. Errors are sticky. */
-  readonly sticky?: boolean;
-  readonly action?: { readonly label: string; readonly run: () => void };
-}
-
-/** How long a notice stays: 6 s, or 12 s with an action (PRD §13). */
-export const NOTICE_MS = 6_000;
-export const NOTICE_ACTION_MS = 12_000;
+/** A playlist row's key: its entry's place and its song, since a playlist may hold a song twice (§9.2). */
+const entryKey = (index: number, path: string) => `${index}\0${path}`;
+/** The song path a row key names. */
+export const keyPath = (key: string): string => key.slice(key.indexOf('\0') + 1);
 
 /** Where the folder comes from: the user picks one (desktop, Chrome), or it is fixed (NAS). */
 export interface FolderChooser {
@@ -110,7 +114,14 @@ export class AppController {
   });
   /** The songs the current view lists, in their shown order: what Play, the keys and Select All work on. */
   readonly rows = computed<readonly Song[]>(() => this.#rowsOf(this.view.value));
-  readonly rowPaths = computed(() => this.rows.value.map((s) => s.path));
+  /**
+   * Each row's key, what the selection holds: the song's path, or in a playlist the entry's place and path.
+   */
+  readonly rowKeys = computed(() => {
+    const paths = this.rows.value.map((s) => s.path);
+    return this.view.value.kind === 'playlist' ? paths.map((p, i) => entryKey(i, p)) : paths;
+  });
+  readonly #rowIndex = computed(() => new Map(this.rowKeys.value.map((k, i) => [k, i])));
   readonly selection = signal<Selection>(NO_SELECTION);
   /** The song the list's cursor is on. */
   readonly cursor = computed(() => this.selection.value.cursor);
@@ -121,9 +132,10 @@ export class AppController {
   readonly scanning = signal<ScanProgress | null>(null);
   /** True once the first scan of the open folder has finished. */
   readonly scanned = signal(false);
-  readonly notice = signal<Notice | null>(null);
+  readonly #notices = new Notices();
+  readonly notice = this.#notices.notice;
   /** Read out by the status bar's live region. */
-  readonly announcement = signal('');
+  readonly announcement = this.#notices.announcement;
   readonly dialog = signal<DialogKind | null>(null);
   readonly queueShown = signal(false);
   /** The Up Next entry the queue panel's cursor is on (an index in the queue), or null. */
@@ -136,10 +148,12 @@ export class AppController {
   /** The playing song's cover, as a URL, or null for the placeholder (§4.6). */
   readonly nowCover = computed(() => this.coverOf(this.player.currentSong.value?.cover));
   readonly player: Player;
+  /** Undo and Redo (§9.2). */
+  readonly undo = new UndoStack();
+  readonly playlists: Playlists;
 
   readonly #index: IndexStore | undefined;
   readonly #now: () => Date;
-  #noticeTimer: (() => void) | null = null;
   #scan: AbortController | null = null;
   readonly #covers: Covers;
   readonly #queueKeeper: QueueKeeper;
@@ -168,7 +182,16 @@ export class AppController {
     this.#covers = new Covers({
       index: options.index,
       imageUrl: options.imageUrl,
-      source: () => this.source.peek(),
+      source: () => this.source.value,
+    });
+    this.playlists = new Playlists({
+      source: () => this.source.value,
+      songOf: (path) => this.byPath.peek().get(path),
+      undo: this.undo,
+      say: (text, notice) => this.say(text, notice),
+      moved: (from, to) => {
+        this.history.value = playlistMoved(this.history.peek(), from, to);
+      },
     });
     this.#queueKeeper = new QueueKeeper({
       index: options.index,
@@ -191,6 +214,9 @@ export class AppController {
   async open(source: LibrarySource): Promise<void> {
     this.player.stop();
     this.#queueKeeper.reset();
+    await this.playlists.settled();
+    this.playlists.reset();
+    this.undo.clear();
     batch(() => {
       this.source.value = source;
       this.songs.value = [];
@@ -201,7 +227,7 @@ export class AppController {
     });
     this.#covers.reset();
     // The index from last time is shown at once; the scan then brings it up to date (§3.3).
-    const saved = await this.#loadIndex(source);
+    const saved = await loadIndexSongs(this.#index, this.#root(source));
     if (saved && this.source.peek() === source) {
       this.#setSongs(saved);
       await this.#restoreQueue(source);
@@ -217,29 +243,6 @@ export class AppController {
   async keepQueue(): Promise<void> {
     const source = this.source.peek();
     if (source) await this.#queueKeeper.keep(this.#root(source));
-  }
-
-  async #loadIndex(source: LibrarySource): Promise<readonly Song[] | null> {
-    try {
-      return (await this.#index?.load(this.#root(source)))?.songs ?? null;
-    } catch {
-      // The index is only a cache: without it, the scan reads every file (§3.2).
-      return null;
-    }
-  }
-
-  /** Keeps the scan's songs and covers for next time, and deletes covers no song uses (§3.2). */
-  async #saveIndex(source: LibrarySource, songs: readonly Song[]): Promise<void> {
-    const index = this.#index;
-    if (!index) return;
-    try {
-      await index.save(makeIndex(this.#root(source), songs, this.#now()));
-      await index.pruneCovers(coverIds(songs));
-    } catch (e) {
-      this.say(`Couldn’t save the library index: ${e instanceof Error ? e.message : String(e)}`, {
-        tone: 'error',
-      });
-    }
   }
 
   /** Reads the folder again, keeping songs whose files haven't changed (§3.3). */
@@ -260,32 +263,40 @@ export class AppController {
       this.#setSongs(sortSongs([...found.values()]));
     });
     try {
-      const songs = await scanLibrary(source, {
-        previous: before,
-        signal: scan.signal,
-        onProgress: (p) => {
-          if (this.#scan === scan) this.scanning.value = p;
+      // One listing: the playlists for the sidebar (§9.1), the music files for the scan.
+      const files = await source.list();
+      if (this.#scan !== scan) return;
+      this.playlists.setPaths(files.filter((f) => isPlaylistPath(f.path)).map((f) => f.path));
+      const songs = await scanLibrary(
+        { ...source, list: () => Promise.resolve(files) },
+        {
+          previous: before,
+          signal: scan.signal,
+          onProgress: (p) => {
+            if (this.#scan === scan) this.scanning.value = p;
+          },
+          onSong: (song) => {
+            if (found.get(song.path) === song) return;
+            found.set(song.path, song);
+            fresh = true;
+          },
+          onCover: (id, picture) => this.#index?.saveCover(id, picture),
         },
-        onSong: (song) => {
-          if (found.get(song.path) === song) return;
-          found.set(song.path, song);
-          fresh = true;
-        },
-        onCover: (id, picture) => this.#index?.saveCover(id, picture),
-      });
+      );
       if (this.#scan !== scan) return;
       const moves = findMoves(before, songs);
       batch(() => {
         const sel = this.selection.peek();
         const moved = sel.cursor === null ? undefined : moves.get(sel.cursor);
         this.#setSongs(songs);
-        if (moved !== undefined && this.rowPaths.peek().includes(moved)) this.selection.value = only(moved);
+        if (moved !== undefined && this.#rowIndex.peek().has(moved)) this.selection.value = only(moved);
         this.scanned.value = true;
       });
       const gone = this.player.prune();
       if (gone > 0) this.say(goneNotice(gone));
       await this.#restoreQueue(source);
-      await this.#saveIndex(source, songs);
+      const failed = await saveIndexSongs(this.#index, this.#root(source), songs, this.#now());
+      if (failed) this.say(`Couldn’t save the library index: ${failed}`, { tone: 'error' });
       const unreadable = songs.filter((s) => s.error).length;
       if (unreadable > 0)
         this.say(`${unreadable === 1 ? '1 file' : `${unreadable} files`} couldn’t be read.`, {
@@ -320,9 +331,9 @@ export class AppController {
   /** Puts the songs in place and keeps the selection to the rows still shown (§6.3). */
   #setSongs(songs: readonly Song[]): void {
     batch(() => {
-      const before = this.rowPaths.peek();
+      const before = this.rowKeys.peek();
       this.songs.value = songs;
-      const after = this.rowPaths.peek();
+      const after = this.rowKeys.peek();
       const sel = keep(this.selection.peek(), before, after);
       this.selection.value = sel.cursor === null && after[0] !== undefined ? only(after[0]) : sel;
     });
@@ -352,6 +363,8 @@ export class AppController {
         return lib.folderByPath.get(view.path)?.songs ?? [];
       case 'search':
         return this.results.value?.songs ?? [];
+      case 'playlist':
+        return this.playlists.songsOf(view.path);
       case 'albums':
       case 'artists':
         return [];
@@ -367,6 +380,15 @@ export class AppController {
       }
       this.history.value = go(this.history.peek(), view);
       this.#selectFirst();
+    });
+    this.#opened(view);
+  }
+
+  /** A playlist's entries are read when it is first shown. */
+  #opened(view: View): void {
+    if (view.kind !== 'playlist') return;
+    void this.playlists.load(view.path).then(() => {
+      if (this.view.peek() === view && this.selection.peek().cursor === null) this.#selectFirst();
     });
   }
 
@@ -385,10 +407,11 @@ export class AppController {
       this.searchText.value = to.current.kind === 'search' ? to.current.query : '';
       this.#selectFirst();
     });
+    this.#opened(to.current);
   }
 
   #selectFirst(): void {
-    const first = this.rowPaths.peek()[0];
+    const first = this.rowKeys.peek()[0];
     this.selection.value = first === undefined ? NO_SELECTION : only(first);
   }
 
@@ -432,20 +455,17 @@ export class AppController {
     this.searchField.current?.select();
   }
 
-  /** Replaces the queue with `songs`, leaving out the ones that can't be read, from `start` (§8.2). */
-  playSongs(songs: readonly Song[], start?: string): Promise<void> {
-    const playable = songs.filter((s) => !s.error || s.path === start);
-    const index =
-      start === undefined
-        ? 0
-        : Math.max(
-            0,
-            playable.findIndex((s) => s.path === start),
-          );
+  /**
+   * Replaces the queue with `songs`, leaving out the ones that can't be read (and a playlist's missing entries,
+   * §9.1), from the song at index `start` (§8.2).
+   */
+  playSongs(songs: readonly Song[], start = 0): Promise<void> {
+    const playable = songs.filter((s, i) => !s.error || (i === start && s.error !== MISSING));
+    const index = songs.slice(0, start).filter((s) => !s.error).length;
     if (playable.length === 0) return Promise.resolve();
     return this.player.playFrom(
       playable.map((s) => s.path),
-      index,
+      Math.min(index, playable.length - 1),
     );
   }
 
@@ -455,75 +475,46 @@ export class AppController {
     return playable.length === 0 ? Promise.resolve() : this.player.shuffleAll(playable);
   }
 
-  /** Play Next (§8.2): right after the playing song, without interrupting it. */
-  playNext(songs: readonly Song[]): void {
-    const playable = songs.filter((s) => !s.error);
-    if (playable.length === 0) return;
-    this.player.playNext(playable.map((s) => s.path));
-    this.say(
-      playable.length === 1
-        ? `Playing next: ${playable[0]!.title}`
-        : `Playing next: ${formatCount(playable.length)} songs`,
-    );
+  /** The selected rows' places in the view (or the cursor's), in shown order. */
+  selectedIndexes(): number[] {
+    const at = this.#rowIndex.peek();
+    return selectedRows(this.selection.peek(), this.rowKeys.peek()).map((k) => at.get(k)!);
   }
 
-  /** Add to Queue (§8.2): at the end. */
-  addToQueue(songs: readonly Song[]): void {
-    const playable = songs.filter((s) => !s.error);
-    if (playable.length === 0) return;
-    this.player.addToQueue(playable.map((s) => s.path));
-    this.say(
-      playable.length === 1
-        ? `Added ${playable[0]!.title} to the queue.`
-        : `Added ${formatCount(playable.length)} songs to the queue.`,
-    );
-  }
-
-  /** Delete in the queue panel: takes out the entry under its cursor; the cursor stays on the one after (§8.4). */
-  removeFromQueue(): void {
-    const at = this.queueCursor.peek();
-    if (at === null) return;
-    this.player.remove([at]);
-    const q = this.player.queue.peek();
-    this.queueCursor.value =
-      at < q.items.length && at > q.index ? at : q.items.length - 1 > q.index ? q.items.length - 1 : null;
-  }
-
-  /** The songs the Song commands act on: the selection, or the cursor's song. */
+  /** The songs the Song commands act on: the selection, or the cursor's song; never a missing entry. */
   selectedSongs(): Song[] {
-    const byPath = this.byPath.peek();
-    return selectedRows(this.selection.peek(), this.rowPaths.peek()).flatMap((p) => byPath.get(p) ?? []);
+    const rows = this.rows.peek();
+    return this.selectedIndexes().flatMap((i) => (rows[i]!.error === MISSING ? [] : [rows[i]!]));
   }
 
-  /** Plays the view's songs from `path` (§8.2, a double-click). */
-  playPath(path: string): Promise<void> {
-    if (!this.rowPaths.peek().includes(path)) return Promise.resolve();
-    this.selection.value = only(path);
-    return this.playSongs(this.rows.peek(), path);
+  /** Plays the view's songs from the row `key` (§8.2, a double-click). */
+  playRow(key: string): Promise<void> {
+    const at = this.#rowIndex.peek().get(key);
+    if (at === undefined) return Promise.resolve();
+    this.selection.value = only(key);
+    return this.playSongs(this.rows.peek(), at);
   }
 
   /** Play (Return): several songs selected play just those; one plays the view from it (§8.2). */
   playSelection(): Promise<void> {
-    const picked = selectedRows(this.selection.peek(), this.rowPaths.peek());
-    if (picked.length > 1) {
-      const byPath = this.byPath.peek();
-      return this.playSongs(picked.map((p) => byPath.get(p)!));
-    }
-    return picked[0] === undefined ? Promise.resolve() : this.playSongs(this.rows.peek(), picked[0]);
+    const picked = this.selectedIndexes();
+    const rows = this.rows.peek();
+    if (picked.length > 1) return this.playSongs(picked.map((i) => rows[i]!));
+    return picked[0] === undefined ? Promise.resolve() : this.playSongs(rows, picked[0]);
   }
 
   /** Play/Pause: with nothing loaded, plays the view from the cursor, or from the top (§8.1). */
   playPause(): Promise<void> {
     if (this.player.state.peek() !== 'stopped') return this.player.toggle();
-    const rows = this.rows.peek().length > 0 ? this.rows.peek() : this.library.peek().songs;
+    if (this.rows.peek().length === 0) return this.playSongs(this.library.peek().songs);
     const cursor = this.cursor.peek();
-    return this.playSongs(rows, cursor !== null && rows.some((s) => s.path === cursor) ? cursor : undefined);
+    return this.playSongs(this.rows.peek(), (cursor === null ? 0 : this.#rowIndex.peek().get(cursor)) ?? 0);
   }
 
   /** The song the Song commands act on: the cursor's. */
   focusedSong(): Song | undefined {
     const cursor = this.cursor.peek();
-    return cursor === null ? undefined : this.byPath.peek().get(cursor);
+    return cursor === null ? undefined : this.byPath.peek().get(keyPath(cursor));
   }
 
   goToAlbum(song: Song): void {
@@ -544,12 +535,18 @@ export class AppController {
   goToCurrent(): void {
     const path = this.player.currentPath.peek();
     if (path === undefined || !this.byPath.peek().has(path)) return;
-    if (!this.rowPaths.peek().includes(path)) this.navigate(SONGS);
+    if (this.#keyOf(path) === undefined) this.navigate(SONGS);
     this.#select(path);
   }
 
+  /** The first row showing the song at `path`. */
+  #keyOf(path: string): string | undefined {
+    return this.rowKeys.peek().find((k) => keyPath(k) === path);
+  }
+
   #select(path: string): void {
-    if (this.rowPaths.peek().includes(path)) this.selection.value = only(path);
+    const key = this.#keyOf(path);
+    if (key !== undefined) this.selection.value = only(key);
   }
 
   /** The folder's songs and everything under it (§6.2 Folders: Play). */
@@ -560,21 +557,23 @@ export class AppController {
 
   /** Shows a notice in the status bar and reads it out. */
   say(text: string, options: Omit<Notice, 'text'> = {}): void {
-    this.#noticeTimer?.();
-    const sticky = options.sticky ?? options.tone === 'error';
-    this.notice.value = { text, ...options, sticky };
-    this.announcement.value = text;
-    this.#noticeTimer = sticky
-      ? null
-      : after(options.action ? NOTICE_ACTION_MS : NOTICE_MS, () => {
-          this.notice.value = null;
-        });
+    this.#notices.say(text, options);
   }
 
   dismissNotice(): void {
-    this.#noticeTimer?.();
-    this.#noticeTimer = null;
-    this.notice.value = null;
+    this.#notices.dismiss();
+  }
+
+  /** Undo (⌘Z) and Redo (⇧⌘Z, §9.2). */
+  async undoStep(redo = false): Promise<void> {
+    try {
+      const label = await (redo ? this.undo.redo() : this.undo.undo());
+      if (label) this.say(`${redo ? 'Redo' : 'Undo'} ${label}`);
+    } catch (e) {
+      this.say(`Couldn’t ${redo ? 'redo' : 'undo'}: ${e instanceof Error ? e.message : String(e)}`, {
+        tone: 'error',
+      });
+    }
   }
 
   /** Opens a dialog; the one open now closes. */
@@ -588,6 +587,6 @@ export class AppController {
 
   /** True while a dialog has the keyboard, so list keys and plain-key commands wait. */
   blocked(): boolean {
-    return this.dialog.value !== null;
+    return this.dialog.value !== null || this.playlists.conflict.value !== null;
   }
 }

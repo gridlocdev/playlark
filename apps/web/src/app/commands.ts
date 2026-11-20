@@ -4,6 +4,8 @@
  */
 import { CommandCatalog, SEEK_STEP, VOLUME_STEP, type CommandSpec } from '@playlark/ui';
 import type { AppController, DialogKind } from './controller.ts';
+import { playlistCommands } from './playlistCommands.ts';
+import { addToQueue, playNext, removeFromQueue } from './queueActions.ts';
 import { all } from './selection.ts';
 import type { View } from './views.ts';
 
@@ -19,10 +21,14 @@ export const SONG_MENU: readonly string[] = [
   '|',
   'song.playNext',
   'song.addToQueue',
+  'song.addToPlaylist',
   '|',
   'song.goToAlbum',
   'song.goToArtist',
 ];
+
+/** The song menu inside a playlist adds Remove from Playlist (§14). */
+export const PLAYLIST_SONG_MENU: readonly string[] = [...SONG_MENU, '|', 'playlist.removeEntries'];
 
 /** View ▸ Songs, Albums, Artists, Folders (§6.1). */
 const VIEWS: readonly (readonly [string, string, string, View])[] = [
@@ -31,6 +37,28 @@ const VIEWS: readonly (readonly [string, string, string, View])[] = [
   ['view.artists', 'Artists', 'mod+3', { kind: 'artists' }],
   ['view.folders', 'Folders', 'mod+4', { kind: 'folders', path: '' }],
 ];
+
+/** Where each playlist command goes in the catalog's order (menus follow it): before this command. */
+const PLACE_BEFORE: Readonly<Record<string, string>> = {
+  'playlist.new': 'file.rescan',
+  'playlist.play': 'edit.selectAll',
+  'playlist.shuffle': 'edit.selectAll',
+  'playlist.rename': 'edit.selectAll',
+  'playlist.delete': 'edit.selectAll',
+  'edit.undo': 'edit.selectAll',
+  'edit.redo': 'edit.selectAll',
+  'song.addToPlaylist': 'song.goToAlbum',
+  'playlist.removeEntries': 'song.goToAlbum',
+};
+
+function placePlaylistCommands(specs: readonly CommandSpec[], extra: readonly CommandSpec[]): CommandSpec[] {
+  const out = [...specs];
+  for (const c of extra) {
+    const at = out.findIndex((s) => s.id === PLACE_BEFORE[c.id]);
+    out.splice(at < 0 ? out.length : at, 0, c);
+  }
+  return out;
+}
 
 export function buildCommands(app: AppController): CommandCatalog {
   const player = app.player;
@@ -82,7 +110,7 @@ export function buildCommands(app: AppController): CommandCatalog {
         const field = typeof document === 'undefined' ? null : document.activeElement;
         if (field && (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement))
           field.select();
-        else app.selection.value = all(app.rowPaths.peek());
+        else app.selection.value = all(app.rowKeys.peek());
       },
     },
     {
@@ -114,7 +142,7 @@ export function buildCommands(app: AppController): CommandCatalog {
       keywords: 'queue after up next',
       context: true,
       enabled: picked,
-      run: () => app.playNext(app.selectedSongs()),
+      run: () => playNext(app, app.selectedSongs()),
     },
     {
       id: 'song.addToQueue',
@@ -124,7 +152,7 @@ export function buildCommands(app: AppController): CommandCatalog {
       keywords: 'queue later end append',
       context: true,
       enabled: picked,
-      run: () => app.addToQueue(app.selectedSongs()),
+      run: () => addToQueue(app, app.selectedSongs()),
     },
     {
       id: 'song.goToAlbum',
@@ -260,7 +288,7 @@ export function buildCommands(app: AppController): CommandCatalog {
       keysOnly: true,
       keywords: 'delete up next',
       enabled: () => app.queueFocused.value && app.queueCursor.value !== null,
-      run: () => app.removeFromQueue(),
+      run: () => removeFromQueue(app),
     },
     {
       id: 'queue.clear',
@@ -346,7 +374,7 @@ export function buildCommands(app: AppController): CommandCatalog {
       run: toggleDialog('commands'),
     },
   ];
-  const catalog = new CommandCatalog(specs);
+  const catalog = new CommandCatalog(placePlaylistCommands(specs, playlistCommands(app)));
   // With a dialog open, only the commands that open dialogs run (their shortcut closes their own dialog).
   catalog.gate = (c) => !app.blocked() || Object.values(DIALOG_COMMAND).includes(c.id);
   return catalog;

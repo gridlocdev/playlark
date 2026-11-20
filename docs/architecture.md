@@ -7,7 +7,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
      │  App · Pages · SongList · NowPlaying · QueuePanel         │
      │  AppController (folder, library, views, selection,       │
      │                 search, notices) · views · selection      │
-     │  Covers · QueueKeeper                                     │
+     │  Playlists · UndoStack · Notices · Covers · QueueKeeper   │
      │  commands.ts · nativeMenu.ts · mediaSession.ts            │
      └─────────────────────────────┬─────────────────────────────┘
                                    │ imports
@@ -30,11 +30,13 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
      │  tags: ID3v1/v2, MP3 stream, FLAC, MP4, Ogg, WAV          │
      │  library: files, songs, sort, scanLibrary, index, covers  │
      │           browse (albums, artists, folders), search       │
+     │  playlists: .m3u8/.m3u read and write, entry edits        │
      │  queue (shuffle, repeat, edits, saved queue) · playback   │
      │  (trim, ReplayGain, crossfade)                            │
      └──────────────────────────────────────────────────────────┘
 
- packages/node-files  Node only: folder listings confined to the folder, media replies with Range, atomic writes
+ packages/node-files  Node only: folder listings confined to the folder, media replies with Range, atomic writes,
+                      playlist writes under a lock file with versions, the trash
  apps/server          node:http, GET and HEAD only: the static client + /api/{info,files,media}
  apps/desktop         Electron main + sandboxed preload; loads the apps/web build from app://playlark/
 ```
@@ -62,6 +64,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 - **Browsing (§4.4, §6.2).** `buildLibrary` groups the songs into albums (by album artist and title, folded for case and accents), artists with their own albums and the ones they appear on, and the folder tree. Unreadable songs stay out of albums and artists.
 - **Search (§6.4).** `prepareSearch` folds each song's words once; `search` keeps the artists, albums and songs where every query word starts some word.
 - **The queue (§8.4, §8.5).** The queue is immutable: every edit returns a new one. It holds the paths in play order, the playing index, repeat, and with shuffle on each entry's rank in the original order, so turning shuffle off sorts them back. `next(q, auto)` knows that Repeat One replays only when a song ends by itself; `following` says what plays after the current song. `saveQueue` and `parseSavedQueue` write and read it, tied to one music folder.
+- **Playlists (§9.1, §9.2).** `parsePlaylist` reads an `.m3u8` or `.m3u` file (UTF-8, else Windows-1252 for `.m3u`; relative, absolute and `file://` paths) into entries that keep their `#` lines and the path as written; `writePlaylist` writes it back in the same encoding. `addEntries`, `removeEntries` and `moveEntries` return the same object when nothing changes, so an edit that changes nothing records no undo step.
 - **Playback (§8.3, §8.6, §8.7).** `trimFor` works out how much of a decoded buffer is the song (cutting the encoder delay and padding only when the decoder didn't), `replayGainFactor` the song's level, and `crossfadeFor` and `fadeCurves` the equal-power fade.
 
 ## UI (`packages/ui`)
@@ -79,6 +82,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 ## Web app (`apps/web`)
 
 - **`AppController`** holds the window's state as signals: the open folder, its songs and the library built from them, the scan, the view history (`views.ts`: back and forward), the songs the view shows and their selection (`selection.ts`), the search, the covers, the open dialog and the status-bar notice. Components read the signals, and commands call the controller's methods. Opening a folder shows its saved index at once, then rescans, updating the list every 500 ms, and saves the result. `Covers` turns cover references into URLs once each, and `QueueKeeper` saves the queue for the open folder (called every second; it writes when the queue changed or the position moved 5 s) and puts it back paused.
+- **`Playlists`** (`playlists.ts`) holds the sidebar's list and the entries of each playlist read so far. Each edit shows at once, becomes an `UndoStack` step and is saved through the source's `PlaylistWriter` with the version last read. Saves of one playlist run one at a time; a failed one is retried at 300 and 600 ms, then the notice offers Try Again. A save refused as changed, deleted or existing sets `conflict`, which shows "<Playlist> changed somewhere else" and holds the keys until Keep Mine or Use Theirs. `checkOutside` runs when the window comes to the front and every 15 s. Sources with no writer (a folder in the browser) show the playlists but can't change them. Song rows in a playlist are keyed by `<index>\0<path>`, since a playlist may hold a song twice.
 - `Pages.tsx` draws each view; `SongList.tsx` is the one song table, drawing only the rows in view through `useVirtualRows`. Every row is 28 px, so the scroll position says which rows show.
 - `main.tsx` picks the library source:
   - the desktop bridge when the app runs in Electron;
@@ -97,4 +101,5 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 
 - `crashGuard.ts` is registered first in the main process. An uncaught error or an unhandled rejection is logged, and the app exits with an error. Electron never shows it in a dialog.
 - The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder, and stored covers at `app://playlark/cover/<sha256>`. The index is `library.json` in the data folder, with the covers in `covers/` beside it and the queue in `queue.json`.
+- Playlist writes go over IPC to `node-files`: written atomically under `.<name>.lock` if the file is still at the version the page read, renamed, or moved to `trash/<YYYY-MM-DD>/` in the data folder. Trash older than 30 days is deleted on start.
 - With `--headless`, the app runs with no window, no Dock icon and no sound, on a throwaway profile. It skips native dialogs and records each one in `globalThis.playlarkHeadless`.

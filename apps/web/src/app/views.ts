@@ -7,7 +7,8 @@ export type View =
   | { readonly kind: 'artists' }
   | { readonly kind: 'artist'; readonly key: string }
   | { readonly kind: 'folders'; readonly path: string }
-  | { readonly kind: 'search'; readonly query: string };
+  | { readonly kind: 'search'; readonly query: string }
+  | { readonly kind: 'playlist'; readonly path: string };
 
 export const SONGS: View = { kind: 'songs' };
 
@@ -46,4 +47,16 @@ export function back(h: History): History {
 export function forward(h: History): History {
   const to = h.forward[0];
   return to ? { back: [...h.back, h.current], current: to, forward: h.forward.slice(1) } : h;
+}
+
+/**
+ * After a playlist was renamed (`to`) or deleted (null): views of it follow the new name, or are dropped, and a
+ * dropped current view becomes Songs.
+ */
+export function playlistMoved(h: History, from: string, to: string | null): History {
+  const was = (v: View) => v.kind === 'playlist' && v.path === from;
+  const map = (v: View): View | null => (was(v) ? (to === null ? null : { kind: 'playlist', path: to }) : v);
+  const keep = (list: readonly View[]) => list.flatMap((v) => map(v) ?? []);
+  if (!was(h.current) && !h.back.some(was) && !h.forward.some(was)) return h;
+  return { back: keep(h.back), current: map(h.current) ?? SONGS, forward: keep(h.forward) };
 }

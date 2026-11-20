@@ -1,8 +1,9 @@
 import { Icon, PopupMenu, type CommandCatalog } from '@playlark/ui';
-import { SONG_MENU } from './commands.ts';
+import { PLAYLIST_SONG_MENU, SONG_MENU } from './commands.ts';
 import type { AppController } from './controller.ts';
 import { Dialogs } from './Dialogs.tsx';
 import { NowPlaying } from './NowPlaying.tsx';
+import { SidebarPlaylists } from './PlaylistUI.tsx';
 import { QueuePanel } from './QueuePanel.tsx';
 import { StatusBar } from './StatusBar.tsx';
 import { CurrentView, viewTitle } from './Pages.tsx';
@@ -88,6 +89,7 @@ export function App({ app, catalog }: { readonly app: AppController; readonly ca
                 </li>
               ))}
             </ul>
+            <SidebarPlaylists app={app} catalog={catalog} />
           </nav>
         )}
         <main class="pl-view">
@@ -102,7 +104,7 @@ export function App({ app, catalog }: { readonly app: AppController; readonly ca
         <PopupMenu
           label="Song"
           catalog={catalog}
-          items={SONG_MENU}
+          items={view.kind === 'playlist' ? PLAYLIST_SONG_MENU : SONG_MENU}
           x={app.menu.value.x}
           y={app.menu.value.y}
           onClose={() => {

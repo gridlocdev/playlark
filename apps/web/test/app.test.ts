@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { makeIndex, type Song } from '@playlark/core';
 import { memoryIndexStore, memoryLibrary } from '@playlark/ui';
-import { cursorStep, only } from '../src/index.ts';
+import { addToQueue, cursorStep, only, playNext } from '../src/index.ts';
 import { fixtureLibrary, makeApp } from './helpers.ts';
 
 const settle = () => new Promise((r) => setTimeout(r, 0));
@@ -181,7 +181,7 @@ describe('browsing', () => {
   it('plays just the selected songs when several are selected', async () => {
     const { app, catalog } = await makeApp();
     await app.open(await fixtureLibrary());
-    const paths = app.rowPaths.value;
+    const paths = app.rowKeys.value;
     app.selection.value = { paths: new Set([paths[1]!, paths[3]!]), cursor: paths[3]!, anchor: paths[1]! };
     catalog.run('song.play');
     await settle();
@@ -259,10 +259,10 @@ describe('the queue', () => {
     const { app } = await makeApp();
     await app.open(await fixtureLibrary());
     const songs = app.songs.value;
-    await app.playSongs(songs.slice(0, 3), songs[0]!.path);
-    app.playNext([songs[4]!]);
+    await app.playSongs(songs.slice(0, 3), 0);
+    playNext(app, [songs[4]!]);
     expect(app.notice.value?.text).toBe('Playing next: Static Bloom');
-    app.addToQueue([songs[5]!, songs[3]!]);
+    addToQueue(app, [songs[5]!, songs[3]!]);
     expect(app.notice.value?.text).toBe('Added 2 songs to the queue.');
     const titles = app.player.queue.value.items.map((p) => app.byPath.value.get(p)?.title);
     expect(titles).toEqual([
@@ -279,7 +279,7 @@ describe('the queue', () => {
     const { app, catalog } = await makeApp();
     await app.open(await fixtureLibrary());
     const songs = app.songs.value;
-    await app.playSongs(songs.slice(0, 4), songs[0]!.path);
+    await app.playSongs(songs.slice(0, 4), 0);
     app.queueFocused.value = true;
     app.queueCursor.value = 2;
     await catalog.run('queue.remove');
@@ -293,7 +293,7 @@ describe('the queue', () => {
     const first = await makeApp({ index });
     await first.app.open(await fixtureLibrary());
     const songs = first.app.songs.value;
-    await first.app.playSongs(songs.slice(0, 3), songs[1]!.path);
+    await first.app.playSongs(songs.slice(0, 3), 1);
     first.engine.at = 12;
     first.app.player.tick();
     await first.app.keepQueue();

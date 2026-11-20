@@ -13,6 +13,8 @@ import type { AppController } from './controller.ts';
 
 /** Separators go before these ids. */
 const BREAKS = new Set([
+  'playlist.new',
+  'playlist.play',
   'edit.selectAll',
   'song.goToAlbum',
   'controls.seekForward',
@@ -51,10 +53,12 @@ function item(catalog: CommandCatalog, c: Command): NativeMenuItem {
 /** The menu bar: one menu per command group, in catalog order, with each command's current state. */
 export function nativeMenu(catalog: CommandCatalog): NativeMenuItem[] {
   return COMMAND_GROUPS.map((group) => {
-    const items: NativeMenuItem[] = group === 'Edit' ? [...CLIPBOARD_ROLES] : [];
+    const items: NativeMenuItem[] = [];
     for (const c of catalog.all) {
       if (c.group !== group || c.hidden) continue;
       if (BREAKS.has(c.id) && items.length > 0) items.push({ type: 'separator' });
+      // Cut, Copy and Paste go after Undo and Redo, before Select All.
+      if (c.id === 'edit.selectAll') items.push(...CLIPBOARD_ROLES);
       items.push(item(catalog, c));
     }
     return { label: group, submenu: items };
@@ -93,6 +97,12 @@ export function watchMenuInputs(app: AppController, changed: () => void, settleM
     void app.queueShown.value;
     void app.player.state.value;
     void app.player.volume.value;
+    void app.view.value;
+    void app.undo.canUndo.value;
+    void app.undo.canRedo.value;
+    void app.playlists.list.value;
+    void app.playlists.target.value;
+    void app.queueFocused.value;
     later.call();
   });
   return () => {

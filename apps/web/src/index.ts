@@ -1,13 +1,22 @@
 // What the web app's tests reach. The page itself starts from main.tsx.
 export {
   AppController,
-  NOTICE_ACTION_MS,
-  NOTICE_MS,
+  keyPath,
   type ControllerOptions,
   type DialogKind,
   type FolderChooser,
-  type Notice,
 } from './app/controller.ts';
+export { NOTICE_ACTION_MS, NOTICE_MS, type Notice } from './app/notices.ts';
+export {
+  MISSING,
+  NEW_PLAYLIST,
+  READ_ONLY,
+  SAVE_RETRIES_MS,
+  missingSong,
+  type PlaylistInfo,
+} from './app/playlists.ts';
+export { addToQueue, playNext, removeFromQueue } from './app/queueActions.ts';
+export { UNDO_LIMIT, UndoStack, type UndoStep } from './app/undo.ts';
 export { buildCommands } from './app/commands.ts';
 export { cursorStep } from './app/cursor.ts';
 export { menuSender, nativeMenu, watchMenuInputs } from './app/nativeMenu.ts';
@@ -18,6 +27,7 @@ export {
   back,
   forward,
   go,
+  playlistMoved,
   replace,
   sameView,
   startHistory,

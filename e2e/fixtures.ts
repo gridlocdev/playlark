@@ -1,7 +1,9 @@
 // Shared scenario setup. `seed('basic')` replaces the served music folder with a copy of e2e/fixtures/basic,
 // so each test starts from known files. The page runs on the real clock: songs play in real time (2 s each).
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { expect, test as base, type Page } from '@playwright/test';
-import { seedData } from './server.ts';
+import { DATA, seedData } from './server.ts';
 
 export { expect };
 export { DATA, seedData } from './server.ts';
@@ -80,4 +82,13 @@ export async function runCommand(page: Page, name: string): Promise<void> {
   await page.keyboard.type(name);
   await page.keyboard.press('Enter');
   await expect(menu).toBeHidden();
+}
+
+/** Puts `Playlists/Mix.m3u8` in the served folder, naming two songs and one file that isn't there. */
+export function seedMix(): void {
+  mkdirSync(path.join(DATA, 'Playlists'), { recursive: true });
+  writeFileSync(
+    path.join(DATA, 'Playlists', 'Mix.m3u8'),
+    '#EXTM3U\n../Field Recordings/rain-on-tin.wav\n../Gone/away.mp3\n../Loose/untagged.mp3\n',
+  );
 }

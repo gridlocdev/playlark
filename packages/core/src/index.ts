@@ -47,6 +47,7 @@ export {
   isCoverPath,
   isLibraryPath,
   isMusicPath,
+  isPlaylistPath,
   isSkippedName,
   stem,
   type LibraryFile,
@@ -125,6 +126,28 @@ export {
   type Repeat,
   type SavedQueue,
 } from './queue.ts';
+export {
+  EMPTY_PLAYLIST,
+  entryFor,
+  parsePlaylist,
+  playlistName,
+  relativePath,
+  resolveEntry,
+  writePlaylist,
+  type PlaylistEncoding,
+  type PlaylistEntry,
+  type PlaylistFile,
+} from './playlists/m3u.ts';
+export {
+  PLAYLIST_FOLDER,
+  addEntries,
+  moveEntries,
+  newPlaylistPath,
+  removeEntries,
+  renamedPath,
+  safeName,
+  sameEntries,
+} from './playlists/edit.ts';
 export {
   CROSSFADE_MAX,
   crossfadeFor,

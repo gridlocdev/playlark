@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'preact/hooks';
 import { Dialog, ListPopup, filterEntries, isMac, type CommandCatalog, type MenuEntry } from '@playlark/ui';
 import type { AppController } from './controller.ts';
+import { AddToPlaylistDialog, ConflictDialog } from './PlaylistUI.tsx';
 import { shortcutGroups } from './shortcuts.ts';
 
 /** The open dialog, if any. One at a time. */
 export function Dialogs({ app, catalog }: { readonly app: AppController; readonly catalog: CommandCatalog }) {
+  // A playlist changed elsewhere comes first: nothing is saved until the user picks (§9.3).
+  const conflict = app.playlists.conflict.value;
+  if (conflict !== null) return <ConflictDialog app={app} path={conflict} />;
   switch (app.dialog.value) {
     case 'commands':
       return <CommandMenu app={app} catalog={catalog} />;
@@ -12,6 +16,8 @@ export function Dialogs({ app, catalog }: { readonly app: AppController; readonl
       return <ShortcutsDialog app={app} catalog={catalog} />;
     case 'unreadable':
       return <UnreadableDialog app={app} />;
+    case 'addToPlaylist':
+      return <AddToPlaylistDialog app={app} />;
     case null:
       return null;
   }
