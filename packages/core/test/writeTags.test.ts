@@ -31,17 +31,23 @@ const JPEG = async (): Promise<Picture> => ({
   data: await bytes(join(LIBRARY, 'Paper Kites Club/Small Hours/cover.jpg')),
 });
 
+/** Each file to edit, and whether it keeps padding, so a smaller edit leaves its length as it was. */
 const FILES = [
-  ['ID3v2.4', join(LIBRARY, 'Northwind Quartet/Harbour Lights/01 Morning Tide.mp3')],
-  ['ID3v2.3', join(AUDIO, 'id3v23.mp3')],
-  ['MP3 with a cover', join(AUDIO, 'apic.mp3')],
-  ['MP3 with no tags', join(LIBRARY, 'Loose/untagged.mp3')],
-  ['FLAC', join(LIBRARY, 'Northwind Quartet/Harbour Lights/02 Salt Air.flac')],
-  ['FLAC with a picture', join(AUDIO, 'picture.flac')],
-  ['M4A, header at the end', join(LIBRARY, 'Northwind Quartet/Harbour Lights/03 Lantern Walk.m4a')],
-  ['M4A with a cover', join(AUDIO, 'covr.m4a')],
-  ['M4A, header first', join(AUDIO, 'faststart.m4a')],
-  ['ALAC', join(AUDIO, 'alac.m4a')],
+  ['ID3v2.4', join(LIBRARY, 'Northwind Quartet/Harbour Lights/01 Morning Tide.mp3'), true],
+  ['ID3v2.3', join(AUDIO, 'id3v23.mp3'), true],
+  ['MP3 with a cover', join(AUDIO, 'apic.mp3'), true],
+  ['MP3 with no tags', join(LIBRARY, 'Loose/untagged.mp3'), true],
+  ['FLAC', join(LIBRARY, 'Northwind Quartet/Harbour Lights/02 Salt Air.flac'), true],
+  ['FLAC with a picture', join(AUDIO, 'picture.flac'), true],
+  ['M4A, header at the end', join(LIBRARY, 'Northwind Quartet/Harbour Lights/03 Lantern Walk.m4a'), true],
+  ['M4A with a cover', join(AUDIO, 'covr.m4a'), true],
+  ['M4A, header first', join(AUDIO, 'faststart.m4a'), true],
+  ['ALAC', join(AUDIO, 'alac.m4a'), true],
+  ['Ogg Vorbis', join(LIBRARY, 'Paper Kites Club/Small Hours/1-01 Static Bloom.ogg'), false],
+  ['Opus', join(LIBRARY, 'Paper Kites Club/Small Hours/2-01 Night Bus.opus'), false],
+  ['Opus, stereo', join(AUDIO, 'stereo.opus'), false],
+  ['WAV with LIST/INFO', join(LIBRARY, 'Field Recordings/rain-on-tin.wav'), false],
+  ['WAV, another', join(AUDIO, 'wav-id3.wav'), false],
 ] as const;
 
 const EVERYTHING = async (): Promise<TagEdit> => ({
@@ -60,7 +66,7 @@ const EVERYTHING = async (): Promise<TagEdit> => ({
 });
 
 describe('writing tags (§11.2)', () => {
-  for (const [what, path] of FILES) {
+  for (const [what, path, padded] of FILES) {
     it(`${what}: writes every field, keeps the audio, and Undo puts the old tags back`, async () => {
       const original = await bytes(path);
       const before = await read(original, path);
@@ -71,11 +77,16 @@ describe('writing tags (§11.2)', () => {
       const expected = applyEdit(before, edit);
       expect(after.tags).toEqual(expected.tags);
       expect(after.cover?.data).toEqual(edit.cover!.data);
-      expect(after.stream).toEqual(before.stream);
+      // Ogg's bit rate comes from the file size, which the tags change; the rest of the stream stays.
+      const { bitrate: _after, ...stream } = after.stream;
+      const { bitrate: _before, ...was } = before.stream;
+      expect(stream).toEqual(was);
+      if (padded) expect(after.stream.bitrate).toBe(before.stream.bitrate);
 
       // A second, smaller edit fits in the padding the first left, so the audio doesn't move.
       const second = await rewriteTags(written!, path, { title: 'Short' });
-      expect(second.bytes!.length).toBe(written!.length);
+      if (padded) expect(second.bytes!.length).toBe(written!.length);
+      expect((await read(second.bytes!, path)).tags.title).toBe('Short');
 
       const back = await rewriteTags(written!, path, undo);
       const restored = await read(back.bytes!, path);
@@ -150,9 +161,17 @@ describe('the check after writing (§11.3)', () => {
     );
   });
 
-  it('says which formats it can’t edit yet', async () => {
+  it('refuses an Ogg file with a second stream, which it can’t lay out again', async () => {
     const path = join(AUDIO, 'stereo.opus');
-    await expect(rewriteTags(await bytes(path), path, { title: 'x' })).rejects.toThrow(/OGG files/);
+    const file = await bytes(path);
+    const other = file.slice(
+      0,
+      27 + file[26]! + file.subarray(27, 27 + file[26]!).reduce((n, l) => n + l, 0),
+    );
+    other[14] = other[14]! ^ 1; // another serial number
+    await expect(rewriteTags(new Uint8Array([...file, ...other]), path, { title: 'x' })).rejects.toThrow(
+      /more than one stream/,
+    );
   });
 });
 

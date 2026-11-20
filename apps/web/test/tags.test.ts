@@ -74,16 +74,31 @@ describe('Song Info (§11.1)', () => {
     expect(after).toEqual(before.map((t) => ({ ...t, genre: 'Ambient' })));
   });
 
-  it('writes the files it can and lists the ones it can’t', async () => {
+  it('writes Ogg files alongside the others (§11.2)', async () => {
     const { app, open, fileTags } = await tagsApp();
+    const before = await Promise.all([FLAC, OGG].map(fileTags));
     await open(FLAC, OGG);
+    expect(app.tags.readOnly.value).toBeNull();
+    app.tags.setField('album', 'Elsewhere');
+    await app.tags.save();
+    expect(app.dialog.value).toBeNull();
+    expect(await Promise.all([FLAC, OGG].map(fileTags))).toEqual(
+      before.map((t) => ({ ...t, album: 'Elsewhere' })),
+    );
+  });
+
+  it('writes the files it can and lists the ones that changed', async () => {
+    const { app, files, open, fileTags } = await tagsApp();
+    await open(FLAC, OGG);
+    files[OGG] = files[OGG]!.slice(0, -1);
     app.tags.setField('album', 'Elsewhere');
     await app.tags.save();
     expect((await fileTags(FLAC)).album).toBe('Elsewhere');
     expect(app.dialog.value).toBe('songInfo');
     expect(app.tags.errors.value).toEqual([
-      '1-01 Static Bloom.ogg: Playlark can’t edit the tags of OGG files yet.',
+      '1-01 Static Bloom.ogg changed somewhere else. Close Song Info and try again.',
     ]);
+    expect(app.undo.canUndo.value).toBe(true);
   });
 
   it('leaves a file that changed since the dialog read it (§11.3)', async () => {

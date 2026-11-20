@@ -97,13 +97,8 @@ export class TagEditor {
   /** Why nothing can be saved here, or null when the songs can be edited. */
   readonly readOnly = computed(() => {
     if (!this.#opts.source()?.tags) return READ_ONLY_NOTE;
-    const formats = new Set(this.songs.value.map((s) => s.format));
-    const editable = [...formats].some((f) => f !== null && canEditFormat(f));
-    if (editable || this.songs.value.length === 0) return null;
-    const [only] = [...formats];
-    return only
-      ? `Playlark can’t edit the tags of ${only.toUpperCase()} files yet.`
-      : 'Playlark can’t edit these files.';
+    const editable = this.songs.value.some((s) => s.format !== null && canEditFormat(s.format));
+    return editable || this.songs.value.length === 0 ? null : 'Playlark can’t edit these files.';
   });
   readonly #opts: TagEditorOptions;
   #loaded: readonly Loaded[] = [];
@@ -235,10 +230,7 @@ export class TagEditor {
       this.progress.value = total > SHOW_PROGRESS_ABOVE ? { done: 0, total } : null;
     });
     const written: Written[] = [];
-    const errors = skipped.map(
-      (l) =>
-        `${baseName(l.song.path)}: Playlark can’t edit the tags of ${l.song.format?.toUpperCase() ?? 'these'} files yet.`,
-    );
+    const errors = skipped.map((l) => `${baseName(l.song.path)}: Playlark can’t edit this file.`);
     for (const [i, { song }] of targets.entries()) {
       const result = await writer.write(song.path, edit, { size: song.size, mtime: song.mtime });
       if (result.ok) {
