@@ -68,7 +68,28 @@ export {
   type LibraryIndex,
 } from './library/index.ts';
 export { sha256Hex } from './sha256.ts';
-export { compareNames, compareSongs, sortKey, sortSongs } from './library/sort.ts';
+export {
+  compareInAlbum,
+  compareNames,
+  compareSongs,
+  compareText,
+  sortKey,
+  sortSongs,
+  sortSongsBy,
+  type SongColumn,
+} from './library/sort.ts';
+export {
+  albumKey,
+  buildLibrary,
+  compareAlbums,
+  fold,
+  songsUnder,
+  type Album,
+  type Artist,
+  type Folder,
+  type Library,
+} from './library/browse.ts';
+export { prepareSearch, search, wordsOf, type SearchIndex, type SearchResults } from './library/search.ts';
 export {
   folderCovers,
   readSong,

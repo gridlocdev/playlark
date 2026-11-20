@@ -8,7 +8,35 @@ Playlark plays one folder of music and everything under it. The desktop app asks
 
 ## The song list
 
-Every song, with its title, artist, album and length, read from the file's own tags (the file name when it has none). Songs sort by artist, album, disc and track. Click to select, use the arrow keys, Page Up/Down, Home and End to move, and press Return or double-click to play. A file that can't be read stays in the list, greyed out, with the reason on hover.
+Every song, with its title, artist, album and length, read from the file's own tags (the file name when it has none). Songs sort by artist, album, disc and track; click a column header to sort by it, and again to reverse. Click to select, use the arrow keys, Page Up/Down, Home and End to move, and press Return or double-click to play. A file that can't be read stays in the list, greyed out, with the reason on hover.
+
+## Selecting songs
+
+⇧↑, ⇧↓ and ⇧-click extend the selection, ⌘-click adds or removes one song, and ⌘A selects every song in the view. Return plays the selection: one song plays the list from there, several play just those.
+
+## Long lists
+
+Lists draw only the rows in view, so a library of 50,000 songs scrolls smoothly.
+
+## Albums
+
+The sidebar's **Albums** (⌘2) shows every album as a cover with its title and album artist. An album's page shows its cover, artist, year, song count and length, a **Play** button, and its songs grouped by disc when it has more than one.
+
+## Artists
+
+**Artists** (⌘3) lists each album artist with their album count. An artist's page has **Play**, their albums newest first, and the albums they appear on.
+
+## Folders
+
+**Folders** (⌘4) follows the music folder on disk: a folder shows its subfolders, then its songs. **Play** plays the folder and everything under it.
+
+## Back and forward
+
+The toolbar's arrows, ⌘[ and ⌘] walk back and forward through the views you opened. ⌥⌘S hides the sidebar. **Go to Album**, **Go to Artist** and **Go to Current Song** (⌘L) jump from a song to where it belongs.
+
+## Search
+
+⌘F goes to the search field. As you type, Playlark finds artists, albums and songs whose title, artist, album, album artist, genre or file name has a word starting with each word you typed, ignoring case and accents ("north har" finds Harbour Lights by Northwind Quartet). Escape clears the search and goes back.
 
 ## Playing songs
 

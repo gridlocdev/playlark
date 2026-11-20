@@ -12,15 +12,20 @@ import {
 import type { AppController } from './controller.ts';
 
 /** Separators go before these ids. */
-const BREAKS = new Set(['controls.seekForward', 'controls.volumeUp']);
+const BREAKS = new Set([
+  'edit.selectAll',
+  'song.goToAlbum',
+  'controls.seekForward',
+  'controls.volumeUp',
+  'view.back',
+  'view.sidebar',
+]);
 
-/** Cut, Copy, Paste and Select All are Electron roles, so text fields get real clipboard events. */
-const CLIPBOARD_ROLES: readonly NativeMenuItem[] = [
-  { role: 'cut' },
-  { role: 'copy' },
-  { role: 'paste' },
-  { role: 'selectAll' },
-];
+/**
+ * Cut, Copy and Paste are Electron roles, so text fields get real clipboard events. Select All is the catalog's
+ * command, which selects a text field's text or the view's songs.
+ */
+const CLIPBOARD_ROLES: readonly NativeMenuItem[] = [{ role: 'cut' }, { role: 'copy' }, { role: 'paste' }];
 
 /**
  * Only ⌘/Ctrl chords become accelerators. A plain key (Space, D, 1) as an accelerator would be taken from
@@ -46,15 +51,11 @@ function item(catalog: CommandCatalog, c: Command): NativeMenuItem {
 /** The menu bar: one menu per command group, in catalog order, with each command's current state. */
 export function nativeMenu(catalog: CommandCatalog): NativeMenuItem[] {
   return COMMAND_GROUPS.map((group) => {
-    const items: NativeMenuItem[] = [];
+    const items: NativeMenuItem[] = group === 'Edit' ? [...CLIPBOARD_ROLES] : [];
     for (const c of catalog.all) {
       if (c.group !== group || c.hidden) continue;
       if (BREAKS.has(c.id) && items.length > 0) items.push({ type: 'separator' });
       items.push(item(catalog, c));
-    }
-    if (group === 'Edit') {
-      if (items.length > 0) items.push({ type: 'separator' });
-      items.push(...CLIPBOARD_ROLES);
     }
     return { label: group, submenu: items };
   }).filter((m) => 'submenu' in m && m.submenu && m.submenu.length > 0);

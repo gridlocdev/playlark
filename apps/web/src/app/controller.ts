@@ -2,22 +2,48 @@
  * The window's state as signals: the music folder and its songs, the scan, the cursor in the song list, the open
  * dialog and the status-bar notice. Components read these; commands call the methods.
  */
-import { batch, computed, effect, signal } from '@preact/signals';
+import { batch, computed, signal } from '@preact/signals';
 import {
+  buildLibrary,
   coverIds,
   findMoves,
+  fold,
   makeIndex,
+  prepareSearch,
   scanLibrary,
+  search,
   sortSongs,
+  sortSongsBy,
+  songsUnder,
+  type CoverRef,
   type ScanProgress,
   type Song,
+  type SongColumn,
 } from '@playlark/core';
-import { Player, after, every, type AudioEngine, type IndexStore, type LibrarySource } from '@playlark/ui';
+import {
+  Player,
+  after,
+  debounce,
+  every,
+  type AudioEngine,
+  type IndexStore,
+  type LibrarySource,
+} from '@playlark/ui';
+import { NO_SELECTION, keep, only, selectedRows, type Selection } from './selection.ts';
+import { SONGS, back, forward, go, replace, startHistory, type History, type View } from './views.ts';
 
 export type DialogKind = 'commands' | 'shortcuts' | 'unreadable';
 
 /** How often the song list takes in what a scan has found so far (PRD §3.3). */
 export const SCAN_UPDATE_MS = 500;
+/** How long typing in the search field pauses before the results update (§6.4). */
+export const SEARCH_IDLE_MS = 100;
+
+/** The Songs table's order: a column, or null for the default (§6.2). */
+export interface SongOrder {
+  readonly column: SongColumn | null;
+  readonly reverse: boolean;
+}
 
 export interface Notice {
   readonly text: string;
@@ -62,6 +88,27 @@ export class AppController {
   /** Every song in the folder, sorted (§6.2). */
   readonly songs = signal<readonly Song[]>([]);
   readonly byPath = computed(() => new Map(this.songs.value.map((s) => [s.path, s])));
+  /** Albums, artists and folders (§4.4). */
+  readonly library = computed(() => buildLibrary(this.songs.value));
+  readonly searchIndex = computed(() => prepareSearch(this.library.value));
+  readonly history = signal<History>(startHistory());
+  readonly view = computed(() => this.history.value.current);
+  readonly songOrder = signal<SongOrder>({ column: null, reverse: false });
+  /** What the search field holds; the search view follows it after a pause (§6.4). */
+  readonly searchText = signal('');
+  readonly results = computed(() => {
+    const view = this.view.value;
+    return view.kind === 'search' ? search(this.searchIndex.value, view.query) : null;
+  });
+  /** The songs the current view lists, in their shown order: what Play, the keys and Select All work on. */
+  readonly rows = computed<readonly Song[]>(() => this.#rowsOf(this.view.value));
+  readonly rowPaths = computed(() => this.rows.value.map((s) => s.path));
+  readonly selection = signal<Selection>(NO_SELECTION);
+  /** The song the list's cursor is on. */
+  readonly cursor = computed(() => this.selection.value.cursor);
+  readonly sidebarShown = signal(true);
+  /** The search field, so Find can put the keyboard there. Set by the toolbar. */
+  readonly searchField: { current: HTMLInputElement | null } = { current: null };
   /** The scan under way, or null. */
   readonly scanning = signal<ScanProgress | null>(null);
   /** True once the first scan of the open folder has finished. */
@@ -70,20 +117,20 @@ export class AppController {
   /** Read out by the status bar's live region. */
   readonly announcement = signal('');
   readonly dialog = signal<DialogKind | null>(null);
-  /** The song the list's cursor is on. */
-  readonly cursor = signal<string | null>(null);
   readonly queueShown = signal(false);
+  /** Cover URLs worked out so far, by cover; null: none could be made. */
+  readonly #covers = signal<ReadonlyMap<string, string | null>>(new Map());
+  readonly #coverLoads = new Set<string>();
   /** The playing song's cover, as a URL, or null for the placeholder (§4.6). */
-  readonly nowCover = signal<string | null>(null);
+  readonly nowCover = computed(() => this.coverOf(this.player.currentSong.value?.cover));
   readonly player: Player;
 
   readonly #index: IndexStore | undefined;
   readonly #imageUrl: ((bytes: ArrayBuffer, mime: string) => string) | undefined;
   readonly #now: () => Date;
-  /** Cover URLs made from folder images, by path, for the folder open now. */
-  #imageUrls = new Map<string, Promise<string | null>>();
   #noticeTimer: (() => void) | null = null;
   #scan: AbortController | null = null;
+  readonly #searching = debounce(SEARCH_IDLE_MS, () => this.#showSearch());
 
   constructor(options: ControllerOptions) {
     this.version = options.version;
@@ -104,14 +151,6 @@ export class AppController {
       ...(options.volume !== undefined ? { volume: options.volume } : {}),
       ...(options.onVolume ? { onVolume: options.onVolume } : {}),
     });
-    effect(() => {
-      const song = this.player.currentSong.value;
-      this.nowCover.value = null;
-      if (!song) return;
-      void this.coverUrl(song).then((url) => {
-        if (this.player.currentSong.peek() === song) this.nowCover.value = url;
-      });
-    });
   }
 
   /** Where the open folder's index is filed: its path, or its name where there is none (§3.2). */
@@ -119,24 +158,34 @@ export class AppController {
     return source.where ?? source.name;
   }
 
-  /** A URL for the song's cover, or null for the placeholder (§4.6). Never throws. */
-  async coverUrl(song: Song): Promise<string | null> {
-    const cover = song.cover;
+  /**
+   * The URL for a cover, or null for the placeholder (§4.6). The first call for a cover starts working it out
+   * and returns null; the signal redraws whoever asked once it is ready.
+   */
+  coverOf(cover: CoverRef | undefined): string | null {
     if (!cover) return null;
+    const key = cover.kind === 'embedded' ? `id:${cover.id}` : `file:${cover.path}`;
+    const known = this.#covers.value.get(key);
+    if (known !== undefined) return known;
+    if (!this.#coverLoads.has(key)) {
+      this.#coverLoads.add(key);
+      void this.#coverUrl(cover).then((url) => {
+        this.#coverLoads.delete(key);
+        this.#covers.value = new Map(this.#covers.peek()).set(key, url);
+      });
+    }
+    return null;
+  }
+
+  /** Never throws: a cover that can't be read is the placeholder. */
+  async #coverUrl(cover: CoverRef): Promise<string | null> {
     try {
       if (cover.kind === 'embedded') return (await this.#index?.coverUrl(cover.id)) ?? null;
       const source = this.source.peek();
       const imageUrl = this.#imageUrl;
       if (!source || !imageUrl) return null;
-      let url = this.#imageUrls.get(cover.path);
-      if (!url) {
-        const mime = cover.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-        url = source.bytes(cover.path).then((bytes) => imageUrl(bytes, mime));
-        this.#imageUrls.set(cover.path, url);
-        // A failed read is tried again next time.
-        url.catch(() => this.#imageUrls.delete(cover.path));
-      }
-      return await url;
+      const mime = cover.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+      return imageUrl(await source.bytes(cover.path), mime);
     } catch {
       return null;
     }
@@ -149,16 +198,14 @@ export class AppController {
       this.source.value = source;
       this.songs.value = [];
       this.scanned.value = false;
-      this.cursor.value = null;
+      this.selection.value = NO_SELECTION;
+      this.history.value = startHistory();
+      this.searchText.value = '';
+      this.#covers.value = new Map();
     });
-    this.#imageUrls = new Map();
     // The index from last time is shown at once; the scan then brings it up to date (§3.3).
     const saved = await this.#loadIndex(source);
-    if (saved && this.source.peek() === source)
-      batch(() => {
-        this.songs.value = saved;
-        this.cursor.value = saved[0]?.path ?? null;
-      });
+    if (saved && this.source.peek() === source) this.#setSongs(saved);
     await this.rescan();
   }
 
@@ -200,8 +247,7 @@ export class AppController {
     const stopUpdates = every(SCAN_UPDATE_MS, () => {
       if (!fresh || this.#scan !== scan) return;
       fresh = false;
-      this.songs.value = sortSongs([...found.values()]);
-      if (this.cursor.peek() === null) this.cursor.value = this.songs.peek()[0]?.path ?? null;
+      this.#setSongs(sortSongs([...found.values()]));
     });
     try {
       const songs = await scanLibrary(source, {
@@ -220,13 +266,11 @@ export class AppController {
       if (this.#scan !== scan) return;
       const moves = findMoves(before, songs);
       batch(() => {
-        this.songs.value = songs;
+        const sel = this.selection.peek();
+        const moved = sel.cursor === null ? undefined : moves.get(sel.cursor);
+        this.#setSongs(songs);
+        if (moved !== undefined && this.rowPaths.peek().includes(moved)) this.selection.value = only(moved);
         this.scanned.value = true;
-        const cursor = this.cursor.peek();
-        const moved = cursor === null ? undefined : moves.get(cursor);
-        if (moved !== undefined) this.cursor.value = moved;
-        else if (cursor === null || !this.byPath.peek().has(cursor))
-          this.cursor.value = songs[0]?.path ?? null;
       });
       await this.#saveIndex(source, songs);
       const unreadable = songs.filter((s) => s.error).length;
@@ -260,23 +304,199 @@ export class AppController {
     }
   }
 
-  /** Plays the song list from `path` (§8.2). */
-  playPath(path: string): Promise<void> {
-    const songs = this.songs.peek();
-    const index = songs.findIndex((s) => s.path === path);
-    if (index < 0) return Promise.resolve();
-    this.cursor.value = path;
+  /** Puts the songs in place and keeps the selection to the rows still shown (§6.3). */
+  #setSongs(songs: readonly Song[]): void {
+    batch(() => {
+      const before = this.rowPaths.peek();
+      this.songs.value = songs;
+      const after = this.rowPaths.peek();
+      const sel = keep(this.selection.peek(), before, after);
+      this.selection.value = sel.cursor === null && after[0] !== undefined ? only(after[0]) : sel;
+    });
+  }
+
+  #rowsOf(view: View): readonly Song[] {
+    const lib = this.library.value;
+    switch (view.kind) {
+      case 'songs': {
+        const order = this.songOrder.value;
+        return order.column === null && !order.reverse
+          ? lib.songs
+          : sortSongsBy(lib.songs, order.column, order.reverse);
+      }
+      case 'album':
+        return lib.albumByKey.get(view.key)?.songs ?? [];
+      case 'artist': {
+        const artist = lib.artistByKey.get(view.key);
+        if (!artist) return [];
+        const theirs = (songs: readonly Song[]) => songs.filter((s) => fold(s.artist) === artist.key);
+        return [
+          ...artist.albums.flatMap((a) => a.songs),
+          ...artist.appearsOn.flatMap((a) => theirs(a.songs)),
+        ];
+      }
+      case 'folders':
+        return lib.folderByPath.get(view.path)?.songs ?? [];
+      case 'search':
+        return this.results.value?.songs ?? [];
+      case 'albums':
+      case 'artists':
+        return [];
+    }
+  }
+
+  /** Opens `view` (§6.1). The cursor goes to its first song. */
+  navigate(view: View): void {
+    batch(() => {
+      if (view.kind !== 'search') {
+        this.#searching.cancel();
+        this.searchText.value = '';
+      }
+      this.history.value = go(this.history.peek(), view);
+      this.#selectFirst();
+    });
+  }
+
+  goBack(): void {
+    this.#walk(back(this.history.peek()));
+  }
+
+  goForward(): void {
+    this.#walk(forward(this.history.peek()));
+  }
+
+  #walk(to: History): void {
+    batch(() => {
+      this.#searching.cancel();
+      this.history.value = to;
+      this.searchText.value = to.current.kind === 'search' ? to.current.query : '';
+      this.#selectFirst();
+    });
+  }
+
+  #selectFirst(): void {
+    const first = this.rowPaths.peek()[0];
+    this.selection.value = first === undefined ? NO_SELECTION : only(first);
+  }
+
+  /** Clicking a column header: sort by it, or reverse it (§6.2). */
+  sortBy(column: SongColumn): void {
+    const order = this.songOrder.peek();
+    this.songOrder.value =
+      order.column === column ? { column, reverse: !order.reverse } : { column, reverse: false };
+  }
+
+  /** Typing in the search field (§6.4): the results follow after a pause; an empty field goes back. */
+  setSearch(text: string): void {
+    this.searchText.value = text;
+    this.#searching.call();
+  }
+
+  #showSearch(): void {
+    const query = this.searchText.peek().trim();
+    const h = this.history.peek();
+    const inSearch = h.current.kind === 'search';
+    if (!query) {
+      if (inSearch) this.#walk(back(h));
+      return;
+    }
+    batch(() => {
+      const view: View = { kind: 'search', query };
+      this.history.value = inSearch ? replace(h, view) : go(h, view);
+      this.#selectFirst();
+    });
+  }
+
+  /** Escape in the search field: empty it and go back to the view before the search (§6.4). */
+  clearSearch(): void {
+    this.#searching.cancel();
+    this.searchText.value = '';
+    if (this.history.peek().current.kind === 'search') this.#walk(back(this.history.peek()));
+  }
+
+  focusSearch(): void {
+    this.searchField.current?.focus();
+    this.searchField.current?.select();
+  }
+
+  /** Replaces the queue with `songs`, leaving out the ones that can't be read, from `start` (§8.2). */
+  playSongs(songs: readonly Song[], start?: string): Promise<void> {
+    const playable = songs.filter((s) => !s.error || s.path === start);
+    const index =
+      start === undefined
+        ? 0
+        : Math.max(
+            0,
+            playable.findIndex((s) => s.path === start),
+          );
+    if (playable.length === 0) return Promise.resolve();
     return this.player.playFrom(
-      songs.map((s) => s.path),
+      playable.map((s) => s.path),
       index,
     );
   }
 
-  /** Play/Pause: with nothing loaded, plays the list from the cursor, or from the top (§8.1). */
+  /** Plays the view's songs from `path` (§8.2, a double-click). */
+  playPath(path: string): Promise<void> {
+    if (!this.rowPaths.peek().includes(path)) return Promise.resolve();
+    this.selection.value = only(path);
+    return this.playSongs(this.rows.peek(), path);
+  }
+
+  /** Play (Return): several songs selected play just those; one plays the view from it (§8.2). */
+  playSelection(): Promise<void> {
+    const picked = selectedRows(this.selection.peek(), this.rowPaths.peek());
+    if (picked.length > 1) {
+      const byPath = this.byPath.peek();
+      return this.playSongs(picked.map((p) => byPath.get(p)!));
+    }
+    return picked[0] === undefined ? Promise.resolve() : this.playSongs(this.rows.peek(), picked[0]);
+  }
+
+  /** Play/Pause: with nothing loaded, plays the view from the cursor, or from the top (§8.1). */
   playPause(): Promise<void> {
     if (this.player.state.peek() !== 'stopped') return this.player.toggle();
-    const first = this.cursor.peek() ?? this.songs.peek().find((s) => !s.error)?.path;
-    return first === undefined ? Promise.resolve() : this.playPath(first);
+    const rows = this.rows.peek().length > 0 ? this.rows.peek() : this.library.peek().songs;
+    const cursor = this.cursor.peek();
+    return this.playSongs(rows, cursor !== null && rows.some((s) => s.path === cursor) ? cursor : undefined);
+  }
+
+  /** The song the Song commands act on: the cursor's. */
+  focusedSong(): Song | undefined {
+    const cursor = this.cursor.peek();
+    return cursor === null ? undefined : this.byPath.peek().get(cursor);
+  }
+
+  goToAlbum(song: Song): void {
+    const album = this.library.peek().albumOf.get(song.path);
+    if (album) this.navigate({ kind: 'album', key: album.key });
+    this.#select(song.path);
+  }
+
+  /** The song's artist's page if they have one, else its album artist's (§4.4). */
+  goToArtist(song: Song): void {
+    const artists = this.library.peek().artistByKey;
+    const key = artists.has(fold(song.artist)) ? fold(song.artist) : fold(song.albumArtist);
+    if (artists.has(key)) this.navigate({ kind: 'artist', key });
+    this.#select(song.path);
+  }
+
+  /** Go to Current Song (⌘L): selects the playing song, in this view if it's here, else in Songs. */
+  goToCurrent(): void {
+    const path = this.player.currentPath.peek();
+    if (path === undefined || !this.byPath.peek().has(path)) return;
+    if (!this.rowPaths.peek().includes(path)) this.navigate(SONGS);
+    this.#select(path);
+  }
+
+  #select(path: string): void {
+    if (this.rowPaths.peek().includes(path)) this.selection.value = only(path);
+  }
+
+  /** The folder's songs and everything under it (§6.2 Folders: Play). */
+  folderSongs(path: string): Song[] {
+    const folder = this.library.peek().folderByPath.get(path);
+    return folder ? songsUnder(folder) : [];
   }
 
   /** Shows a notice in the status bar and reads it out. */

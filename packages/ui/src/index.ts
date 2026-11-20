@@ -70,4 +70,10 @@ export {
   type Settings,
   type SettingsStorage,
 } from './settings.ts';
-export { useScrolledIntoView } from './components/domHooks.ts';
+export {
+  OVERSCAN,
+  useScrolledIntoView,
+  useVirtualRows,
+  visibleRows,
+  type VisibleRows,
+} from './components/domHooks.ts';

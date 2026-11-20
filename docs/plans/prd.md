@@ -318,6 +318,8 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 | App      | Command Menu                                    | ⌘K                          |
 
 - Shuffle is ⌘S because Playlark has nothing to save by hand.
+- Select All (⌘A) selects the text in a text field, else every song in the view. In the desktop app it replaces the Edit menu's built-in Select All, so one command does both.
+- Find (⌘F) and Select All work while the search field has focus; the other shortcuts with ⌘ wait until it hasn't.
 - Context menu on songs: Play, Play Next, Add to Queue, Add to Playlist ▸, Favourite, Song Info…, Go to Album, Go to Artist, Show in Finder (desktop), and Remove from Playlist inside a playlist. On playlists in the sidebar: Play, Shuffle, Rename, Delete Playlist, Show in Finder.
 
 ## §15 Media keys and Now Playing
