@@ -14,6 +14,7 @@ export {
   COVERS_FOLDER,
   INDEX_FILE,
   QUEUE_FILE,
+  STATS_FILE,
   indexFolder,
   type IndexFolder,
   type StoredCover,

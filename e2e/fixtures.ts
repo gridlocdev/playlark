@@ -22,7 +22,7 @@ export const songs = (page: Page) => page.getByRole('grid', { name: 'Songs' });
 export const nowPlaying = (page: Page) => page.getByRole('region', { name: 'Now playing' });
 
 /** The song titles in the list, top to bottom. */
-export const titles = (page: Page) => songs(page).locator('tbody tr td:nth-child(2)').allInnerTexts();
+export const titles = (page: Page) => songs(page).locator('tbody tr td.pl-col-title').allInnerTexts();
 
 /**
  * Open the app the way a user does, and wait until the scan has listed the songs. The page loads before the app

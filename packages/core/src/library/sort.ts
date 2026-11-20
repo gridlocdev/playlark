@@ -1,5 +1,6 @@
 /** The library's sort order (PRD §4.4, §5): natural, case-blind, by sort-name tags, a leading "The " ignored. */
 import { baseName } from './files.ts';
+import { NO_STATS, type FolderStats } from '../stats.ts';
 import type { Song } from './song.ts';
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -42,18 +43,32 @@ export function sortSongs(songs: readonly Song[]): Song[] {
 }
 
 /** The Songs table's columns that sort when their header is clicked (§6.2). */
-export type SongColumn = 'title' | 'artist' | 'album' | 'time';
+export type SongColumn = 'favourite' | 'title' | 'artist' | 'album' | 'time' | 'plays';
 
-const BY_COLUMN: Record<SongColumn, (a: Song, b: Song) => number> = {
+type Compare = (a: Song, b: Song, stats: FolderStats) => number;
+const of = (stats: FolderStats, s: Song) => stats.get(s.path) ?? NO_STATS;
+
+/** ♥ and Plays put the favourites and the most played first. */
+const BY_COLUMN: Record<SongColumn, Compare> = {
+  favourite: (a, b, stats) => Number(of(stats, b).favourite) - Number(of(stats, a).favourite),
   title: (a, b) => compareNames(a.title, b.title, a.titleSort, b.titleSort),
   artist: (a, b) => compareNames(a.artist, b.artist, a.artistSort, b.artistSort),
   album: (a, b) => compareNames(a.album, b.album, a.albumSort, b.albumSort),
   time: (a, b) => a.duration - b.duration,
+  plays: (a, b, stats) => of(stats, b).plays - of(stats, a).plays,
 };
 
-/** The songs sorted by `column` (ties in the default order), reversed when `reverse`. Null: the default order. */
-export function sortSongsBy(songs: readonly Song[], column: SongColumn | null, reverse = false): Song[] {
+/**
+ * The songs sorted by `column` (ties in the default order), reversed when `reverse`. Null: the default order.
+ * `stats` is what ♥ and Plays sort by (§10).
+ */
+export function sortSongsBy(
+  songs: readonly Song[],
+  column: SongColumn | null,
+  reverse = false,
+  stats: FolderStats = new Map(),
+): Song[] {
   const by = column ? BY_COLUMN[column] : null;
-  const sorted = [...songs].sort((a, b) => (by ? by(a, b) : 0) || compareSongs(a, b));
+  const sorted = [...songs].sort((a, b) => (by ? by(a, b, stats) : 0) || compareSongs(a, b));
   return reverse ? sorted.reverse() : sorted;
 }

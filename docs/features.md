@@ -85,3 +85,7 @@ Every `.m3u8` and `.m3u` file in the music folder shows under **Playlists** in t
 ## Editing playlists
 
 In the desktop app, **New Playlist** (⌘N) makes `Playlists/New Playlist.m3u8` with the selected songs and lets you name it. Drag songs onto a playlist in the sidebar, or use **Add to Playlist…**, to add them at the end. Inside a playlist, drag songs to reorder them and press Delete to take them out. Rename and delete a playlist from its right-click menu. A deleted playlist goes to Playlark's trash in its data folder for 30 days. Every change is saved at once and can be undone with ⌘Z. If another app changes a playlist while you are editing it, Playlark asks whether to keep yours or take theirs.
+
+## Favourites and play counts
+
+The **♥** in a song's row, in the now-playing bar or **Favourite** (⌥⌘F) marks the selected songs, or the song playing, as favourites; Undo takes it back. A song counts as played once it has played for half its length or 4 minutes, whichever comes first; seeking past that doesn't count. The Songs table shows the plays and sorts by ♥ and Plays. Under **Collections** in the sidebar, **Favourites**, **Recently Added** (the last 90 days) and **Most Played** (the top 100) list them. A song moved within the folder keeps its stats. The desktop app keeps them in `stats.json` in its data folder, the browser in its own storage; never in the music files.

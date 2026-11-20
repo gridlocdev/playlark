@@ -94,6 +94,9 @@ export function watchMenuInputs(app: AppController, changed: () => void, settleM
     void app.scanning.value;
     void app.songs.value;
     void app.cursor.value;
+    void app.selection.value;
+    void app.stats.songs.value;
+    void app.player.currentPath.value;
     void app.queueShown.value;
     void app.player.state.value;
     void app.player.volume.value;

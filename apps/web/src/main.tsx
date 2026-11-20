@@ -18,6 +18,7 @@ import { App } from './app/App.tsx';
 import { buildCommands } from './app/commands.ts';
 import { AppController, type FolderChooser } from './app/controller.ts';
 import { startMediaSession } from './app/mediaSession.ts';
+import { SAVE_STATS_MS } from './app/stats.ts';
 import { nativeBridge, type NativeFolder, type PlaylarkNative } from './app/native.ts';
 import { menuSender, nativeMenu, watchMenuInputs } from './app/nativeMenu.ts';
 import pkg from '../package.json';
@@ -115,9 +116,13 @@ async function start(): Promise<void> {
     document.title = song && app.player.state.value === 'playing' ? `${song.title} – Playlark` : 'Playlark';
   });
   listenForKeys(window, catalog, () => app.blocked());
-  every(TICK_MS, () => app.player.tick());
+  every(TICK_MS, () => app.tick());
   every(KEEP_QUEUE_MS, () => void app.keepQueue());
-  addEventListener('pagehide', () => void app.keepQueue());
+  every(SAVE_STATS_MS, () => void app.stats.flush());
+  addEventListener('pagehide', () => {
+    void app.keepQueue();
+    void app.stats.flush();
+  });
   every(CHECK_PLAYLISTS_MS, () => void app.playlists.checkOutside());
   addEventListener('focus', () => void app.playlists.checkOutside());
   startMediaSession(app, catalog);

@@ -80,6 +80,8 @@ export class Player {
   /** Seconds into the current song; `tick` keeps it moving while playing. */
   readonly position = signal(0);
   readonly duration = signal(0);
+  /** Goes up by one each time a song starts playing (not on a seek or a resume): what play counts follow (§10.2). */
+  readonly started = signal(0);
   readonly volume: Signal<number>;
   readonly currentPath = computed(() => current(this.queue.value));
   readonly currentSong = computed(() => {
@@ -374,6 +376,7 @@ export class Player {
     this.duration.value = ahead.decoded.duration;
     this.position.value = this.#options.engine.position();
     this.state.value = 'playing';
+    this.started.value++;
   }
 
   async #playCurrent(from = 0): Promise<void> {
@@ -412,6 +415,7 @@ export class Player {
     this.#options.engine.play(decoded, at, this.#gain(song));
     this.position.value = at;
     this.state.value = 'playing';
+    this.started.value++;
     this.#prepare();
   }
 

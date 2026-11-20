@@ -1,6 +1,7 @@
 import { Icon, PopupMenu, type CommandCatalog } from '@playlark/ui';
 import { PLAYLIST_SONG_MENU, SONG_MENU } from './commands.ts';
 import type { AppController } from './controller.ts';
+import { SidebarCollections } from './Collections.tsx';
 import { Dialogs } from './Dialogs.tsx';
 import { NowPlaying } from './NowPlaying.tsx';
 import { SidebarPlaylists } from './PlaylistUI.tsx';
@@ -89,6 +90,7 @@ export function App({ app, catalog }: { readonly app: AppController; readonly ca
                 </li>
               ))}
             </ul>
+            <SidebarCollections app={app} current={current} />
             <SidebarPlaylists app={app} catalog={catalog} />
           </nav>
         )}

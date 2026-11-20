@@ -23,6 +23,8 @@ Every shortcut, on macOS and on Windows and Linux. The Keyboard Shortcuts window
 | Clear the search and go back | **⎋** in the search field | **Esc** in the search field |
 | Show or hide the sidebar     | **⌥⌘S**                   | **Ctrl+Alt+S**              |
 
+Favourites, Recently Added and Most Played are under **Collections** in the sidebar, and in the command menu (⌘K).
+
 ## Songs
 
 | Action | macOS | Windows / Linux |
@@ -33,6 +35,7 @@ Every shortcut, on macOS and on Windows and Linux. The Keyboard Shortcuts window
 | Select more songs | **⇧↑** **⇧↓**, ⇧-click or ⌘-click | **Shift+Up** **Shift+Down**, Shift-click or Ctrl-click |
 | Select all the songs in the view | **⌘A** | **Ctrl+A** |
 | Select the playing song | **⌘L** | **Ctrl+L** |
+| Favourite the selected songs (or the song playing) | **⌥⌘F**, or the **♥** in the list or the now-playing bar | **Ctrl+Alt+F**, or the **♥** |
 
 ## Playback
 
@@ -48,7 +51,7 @@ Every shortcut, on macOS and on Windows and Linux. The Keyboard Shortcuts window
 | Shuffle on or off                              | **⌘S**  | **Ctrl+S**         |
 | Repeat: off, all, one                          | **⌥⌘R** | **Ctrl+Alt+R**     |
 
-Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Go to Album** and **Go to Artist**, and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
+Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Favourite**, **Go to Album** and **Go to Artist**, and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
 
 The media keys on the keyboard, headphones and the lock screen also play, pause and skip.
 

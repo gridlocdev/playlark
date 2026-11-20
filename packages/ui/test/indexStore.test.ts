@@ -43,6 +43,8 @@ describe('index stores', () => {
         queue = t;
         return Promise.resolve();
       },
+      loadStats: () => Promise.resolve(null),
+      saveStats: () => Promise.resolve(),
     };
     const store = bridgeIndexStore(bridge, (id) => `app://playlark/cover/${id}`);
     expect(await store.coverUrl(A)).toBeNull();
@@ -88,6 +90,8 @@ describe('index stores', () => {
         queue = t;
         return Promise.resolve();
       },
+      loadStats: () => Promise.resolve(null),
+      saveStats: none,
     };
     const saved = saveQueue('/Music', playFrom(['a.mp3', 'b.mp3'], 1), 30);
     for (const store of [memoryIndexStore(), bridgeIndexStore(bridge, String)]) {
@@ -96,5 +100,43 @@ describe('index stores', () => {
       expect(await store.loadQueue('/Music')).toEqual(saved);
       expect(await store.loadQueue('/Other')).toBeNull();
     }
+  });
+
+  it('keeps each folder’s stats in one file, and never writes over a file it can’t read', async () => {
+    let text: string | null = null;
+    const none = () => Promise.resolve();
+    const bridge: IndexBridge = {
+      load: () => Promise.resolve(null),
+      save: none,
+      saveCover: none,
+      pruneCovers: none,
+      loadQueue: () => Promise.resolve(null),
+      saveQueue: none,
+      loadStats: () => Promise.resolve(text),
+      saveStats: (t) => {
+        text = t;
+        return Promise.resolve();
+      },
+    };
+    const fav = { favourite: true, plays: 2, lastPlayed: 5, added: 1 };
+    const store = bridgeIndexStore(bridge, String);
+    expect((await store.loadStats('/Music')).size).toBe(0);
+    await store.saveStats('/Music', new Map([['a.mp3', fav]]));
+    await store.loadStats('/Other');
+    await store.saveStats('/Other', new Map([['b.mp3', { ...fav, favourite: false }]]));
+    const again = bridgeIndexStore(bridge, String);
+    expect((await again.loadStats('/Music')).get('a.mp3')).toEqual(fav);
+    expect((await again.loadStats('/Other')).get('b.mp3')?.plays).toBe(2);
+
+    text = '{ not json';
+    const broken = bridgeIndexStore(bridge, String);
+    await expect(broken.loadStats('/Music')).rejects.toThrow(/can’t be read/);
+    await expect(broken.saveStats('/Music', new Map())).rejects.toThrow(/can’t be read/);
+    expect(text).toBe('{ not json');
+
+    const memory = memoryIndexStore();
+    await memory.saveStats('/Music', new Map([['a.mp3', fav]]));
+    expect((await memory.loadStats('/Music')).get('a.mp3')).toEqual(fav);
+    expect((await memory.loadStats('/Other')).size).toBe(0);
   });
 });

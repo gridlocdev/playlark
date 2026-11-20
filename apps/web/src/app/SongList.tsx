@@ -1,6 +1,6 @@
 import { useRef, useState } from 'preact/hooks';
-import type { Song, SongColumn } from '@playlark/core';
-import { formatTime, useVirtualRows } from '@playlark/ui';
+import type { Song, SongColumn, SongStats } from '@playlark/core';
+import { Icon, formatCount, formatTime, useVirtualRows } from '@playlark/ui';
 import type { AppController } from './controller.ts';
 import { PlayingMark } from './PlayingMark.tsx';
 import { MISSING } from './playlists.ts';
@@ -16,7 +16,12 @@ export const HEADER_HEIGHT = 29;
 
 export type Column = SongColumn | 'track';
 
+/** The columns most lists show; the Songs view adds Plays (§6.2). */
+export const LIST_COLUMNS: readonly Column[] = ['favourite', 'title', 'artist', 'album', 'time'];
+
 const TITLES: Record<Column, string> = {
+  favourite: '♥',
+  plays: 'Plays',
   track: '#',
   title: 'Title',
   artist: 'Artist',
@@ -146,12 +151,17 @@ export function SongList({
                   aria-sort={sorted ? (order.reverse ? 'descending' : 'ascending') : undefined}
                 >
                   {sortable && c !== 'track' ? (
-                    <button type="button" class="pl-sort" onClick={() => app.sortBy(c)}>
+                    <button
+                      type="button"
+                      class="pl-sort"
+                      aria-label={c === 'favourite' ? 'Favourite' : undefined}
+                      onClick={() => app.sortBy(c)}
+                    >
                       {TITLES[c]}
                       {sorted && <span aria-hidden="true">{order.reverse ? ' ▾' : ' ▴'}</span>}
                     </button>
                   ) : (
-                    TITLES[c]
+                    <span aria-label={c === 'favourite' ? 'Favourite' : undefined}>{TITLES[c]}</span>
                   )}
                 </th>
               );
@@ -175,6 +185,8 @@ export function SongList({
                 rowIndex={start + i + 2}
                 stripe={line.index % 2 === 1}
                 columns={columns}
+                stats={app.stats.get(line.song.path)}
+                onFavourite={() => app.stats.toggleFavourite([line.song.path])}
                 selected={selection.paths.has(line.key)}
                 playing={line.song.path === playing ? state : null}
                 drop={
@@ -212,8 +224,10 @@ export function SongList({
   );
 }
 
-function cell(song: Song, column: Column): string {
+function cell(song: Song, column: Exclude<Column, 'favourite'>, stats: SongStats): string {
   switch (column) {
+    case 'plays':
+      return stats.plays > 0 ? formatCount(stats.plays) : '';
     case 'track':
       return song.track === undefined ? '' : String(song.track);
     case 'title':
@@ -233,6 +247,8 @@ function SongRow(props: {
   readonly rowIndex: number;
   readonly stripe: boolean;
   readonly columns: readonly Column[];
+  readonly stats: SongStats;
+  readonly onFavourite: () => void;
   readonly selected: boolean;
   /** The player's state when this is the playing song. */
   readonly playing: string | null;
@@ -285,9 +301,41 @@ function SongRow(props: {
       <td class="pl-col-mark">{props.playing && <PlayingMark moving={props.playing === 'playing'} />}</td>
       {props.columns.map((c) => (
         <td key={c} class={`pl-col-${c}`}>
-          {cell(s, c)}
+          {c === 'favourite'
+            ? !missing && <Heart on={props.stats.favourite} onToggle={props.onFavourite} tabIndex={-1} />
+            : cell(s, c, props.stats)}
         </td>
       ))}
     </tr>
+  );
+}
+
+/** The favourite heart (§10.2): filled when on. A press toggles it without touching the selection. */
+export function Heart({
+  on,
+  onToggle,
+  tabIndex,
+}: {
+  readonly on: boolean;
+  readonly onToggle: () => void;
+  readonly tabIndex?: number;
+}) {
+  return (
+    <button
+      type="button"
+      class={`pl-heart${on ? ' pl-heart-on' : ''}`}
+      aria-label="Favourite"
+      aria-pressed={on}
+      title={on ? 'Unfavourite' : 'Favourite'}
+      tabIndex={tabIndex}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onDblClick={(e) => e.stopPropagation()}
+    >
+      <Icon name={on ? 'heart-filled' : 'heart'} />
+    </button>
   );
 }

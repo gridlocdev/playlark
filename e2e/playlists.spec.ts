@@ -17,7 +17,7 @@ test.describe('Playlists', () => {
     await sidebar.getByRole('button', { name: 'Mix' }).click();
     await expect(page.locator('.pl-view-title')).toHaveText('Mix');
     const list = page.getByRole('grid', { name: 'Mix' });
-    await expect(list.locator('tbody tr td:nth-child(2)')).toHaveText([
+    await expect(list.locator('tbody tr td.pl-col-title')).toHaveText([
       'Rain on Tin',
       'Missing: Gone/away.mp3',
       'untagged',

@@ -274,6 +274,61 @@
   font-variant-numeric: tabular-nums;
 }
 
+.pl-col-plays {
+  width: 56px;
+  text-align: right !important;
+  color: var(--pl-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.pl-col-favourite {
+  width: 28px;
+  text-align: center;
+}
+
+/* The favourite heart (§10.2): filled in the accent colour when on; an empty one shows on the row under the mouse. */
+.pl-heart {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--pl-text-3);
+  cursor: default;
+}
+.pl-heart .pl-icon {
+  width: 14px;
+  height: 14px;
+}
+.pl-heart-on {
+  color: var(--pl-accent);
+}
+.pl-heart:focus-visible {
+  outline: 2px solid var(--pl-accent);
+  outline-offset: 1px;
+}
+.pl-songs tbody .pl-heart:not(.pl-heart-on) {
+  visibility: hidden;
+}
+.pl-songs tbody tr:hover .pl-heart,
+.pl-songs tbody tr[aria-selected='true'] .pl-heart {
+  visibility: visible;
+}
+.pl-songs:focus tbody tr[aria-selected='true'] .pl-heart {
+  color: inherit;
+}
+.pl-now-right .pl-heart {
+  width: 28px;
+  height: 28px;
+}
+.pl-now-right .pl-heart .pl-icon {
+  width: 16px;
+  height: 16px;
+}
+
 /* Queue panel (§8.4) */
 .pl-queue {
   flex: none;

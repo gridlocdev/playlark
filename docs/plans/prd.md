@@ -222,14 +222,18 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 
 ### §10.1 Storage
 
-- Kept in `stats.json` in the app's data folder (desktop) or the server's data folder (NAS, shared by every browser using that server), keyed by song path: `favourite`, `plays`, `lastPlayed`, `added`. Not in the music files. The desktop app and the NAS keep separate stats.
-- Written atomically, at most every 2 s.
+- Kept in `stats.json` in the app's data folder (desktop) or the server's data folder (NAS, shared by every browser using that server), keyed by song path: `favourite`, `plays`, `lastPlayed`, `added`. Not in the music files. The desktop app and the NAS keep separate stats. A folder opened in the browser keeps its stats in IndexedDB, beside its index.
+- Written atomically, at most every 2 s, and when the window closes.
+- Unlike the index, the stats are the user's data: a stats file that can't be read is never written over. The status bar says "Favourites and play counts won’t be kept: <reason>" and nothing is saved until the next start.
 
 ### §10.2 Rules
 
 - **Favourite** (⌥⌘F, the heart in lists and the now-playing bar) toggles; it's an undo step.
 - A play counts when a song has played for half its length or 4 minutes, whichever comes first, once per time it's started. Seeking doesn't add listened time.
 - A song moved within the library keeps its stats (§3.3).
+- With several songs selected, Favourite turns them all on when any is off, else all off. With nothing selected it acts on the song playing.
+- The Songs table has ♥ and Plays columns, both sorting the most first. An empty heart shows only on hover and in selected rows.
+- An empty collection says what fills it ("Songs you favourite appear here.").
 
 ## §11 Tag editing
 

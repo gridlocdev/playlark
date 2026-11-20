@@ -247,6 +247,11 @@ function registerIpc(): void {
     if (!trusted(e) || typeof text !== 'string') return refuse();
     return index.saveQueue(text);
   });
+  ipcMain.handle(Channels.loadStats, (e) => (trusted(e) ? index.loadStats() : refuse()));
+  ipcMain.handle(Channels.saveStats, (e, text: unknown) => {
+    if (!trusted(e) || typeof text !== 'string') return refuse();
+    return index.saveStats(text);
+  });
   ipcMain.handle(Channels.pruneCovers, (e, keep: unknown) => {
     if (!trusted(e) || !Array.isArray(keep) || !keep.every((k) => typeof k === 'string')) return refuse();
     return index.pruneCovers(new Set(keep));

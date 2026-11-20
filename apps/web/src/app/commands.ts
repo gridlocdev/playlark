@@ -22,6 +22,7 @@ export const SONG_MENU: readonly string[] = [
   'song.playNext',
   'song.addToQueue',
   'song.addToPlaylist',
+  'song.favourite',
   '|',
   'song.goToAlbum',
   'song.goToArtist',
@@ -30,12 +31,15 @@ export const SONG_MENU: readonly string[] = [
 /** The song menu inside a playlist adds Remove from Playlist (§14). */
 export const PLAYLIST_SONG_MENU: readonly string[] = [...SONG_MENU, '|', 'playlist.removeEntries'];
 
-/** View ▸ Songs, Albums, Artists, Folders (§6.1). */
-const VIEWS: readonly (readonly [string, string, string, View])[] = [
-  ['view.songs', 'Songs', 'mod+1', { kind: 'songs' }],
-  ['view.albums', 'Albums', 'mod+2', { kind: 'albums' }],
-  ['view.artists', 'Artists', 'mod+3', { kind: 'artists' }],
-  ['view.folders', 'Folders', 'mod+4', { kind: 'folders', path: '' }],
+/** View ▸ Songs, Albums, Artists, Folders, then the collections (§6.1), with what each shows. */
+const VIEWS: readonly (readonly [string, string, string | null, View, string])[] = [
+  ['view.songs', 'Songs', 'mod+1', { kind: 'songs' }, 'Show every song.'],
+  ['view.albums', 'Albums', 'mod+2', { kind: 'albums' }, 'Show the albums.'],
+  ['view.artists', 'Artists', 'mod+3', { kind: 'artists' }, 'Show the artists.'],
+  ['view.folders', 'Folders', 'mod+4', { kind: 'folders', path: '' }, 'Show the folders.'],
+  ['view.favourites', 'Favourites', null, { kind: 'favourites' }, 'Show the songs you favourited.'],
+  ['view.recent', 'Recently Added', null, { kind: 'recent' }, 'Show the songs added in the last 90 days.'],
+  ['view.mostPlayed', 'Most Played', null, { kind: 'mostPlayed' }, 'Show the 100 songs played most.'],
 ];
 
 /** Where each playlist command goes in the catalog's order (menus follow it): before this command. */
@@ -47,7 +51,7 @@ const PLACE_BEFORE: Readonly<Record<string, string>> = {
   'playlist.delete': 'edit.selectAll',
   'edit.undo': 'edit.selectAll',
   'edit.redo': 'edit.selectAll',
-  'song.addToPlaylist': 'song.goToAlbum',
+  'song.addToPlaylist': 'song.favourite',
   'playlist.removeEntries': 'song.goToAlbum',
 };
 
@@ -58,6 +62,13 @@ function placePlaylistCommands(specs: readonly CommandSpec[], extra: readonly Co
     out.splice(at < 0 ? out.length : at, 0, c);
   }
   return out;
+}
+
+/** What Favourite acts on: the selected songs, else the song playing (§10.2). */
+function favouriteTargets(app: AppController): string[] {
+  if (app.cursor.value !== null) return app.selectedSongs().map((s) => s.path);
+  const playing = app.player.currentPath.value;
+  return playing === undefined ? [] : [playing];
 }
 
 export function buildCommands(app: AppController): CommandCatalog {
@@ -153,6 +164,22 @@ export function buildCommands(app: AppController): CommandCatalog {
       context: true,
       enabled: picked,
       run: () => addToQueue(app, app.selectedSongs()),
+    },
+    {
+      id: 'song.favourite',
+      title: 'Favourite',
+      description:
+        'Mark the selected songs as favourites, or unmark them. With none selected, the song playing.',
+      group: 'Song',
+      shortcuts: ['mod+alt+f'],
+      keywords: 'heart love like star',
+      context: true,
+      enabled: () => favouriteTargets(app).length > 0,
+      checked: () => {
+        const paths = favouriteTargets(app);
+        return paths.length > 0 && paths.every((p) => app.stats.get(p).favourite);
+      },
+      run: () => app.stats.toggleFavourite(favouriteTargets(app)),
     },
     {
       id: 'song.goToAlbum',
@@ -299,13 +326,13 @@ export function buildCommands(app: AppController): CommandCatalog {
       enabled: upNext,
       run: () => player.clearUpNext(),
     },
-    ...VIEWS.map(([id, title, key, view]): CommandSpec => ({
+    ...VIEWS.map(([id, title, key, view, description]): CommandSpec => ({
       id,
       title,
-      description: `Show ${title.toLowerCase() === 'songs' ? 'every song' : `the ${title.toLowerCase()}`}.`,
+      description,
       group: 'View',
-      shortcuts: [key],
-      keywords: 'library browse go',
+      shortcuts: key ? [key] : [],
+      keywords: key ? 'library browse go' : 'collection browse go',
       checked: () => app.view.value.kind === view.kind,
       run: () => app.navigate(view),
     })),

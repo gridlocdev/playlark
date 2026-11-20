@@ -4,11 +4,14 @@
  * full scan, never an error the user sees.
  */
 import {
+  type FolderStats,
   type LibraryIndex,
   type Picture,
   type SavedQueue,
   parseIndex,
   parseSavedQueue,
+  parseStatsFile,
+  writeStatsFile,
 } from '@playlark/core';
 
 export interface IndexStore {
@@ -23,12 +26,29 @@ export interface IndexStore {
   /** The queue kept from the last run in `root` (PRD §8.4), or null. */
   loadQueue(root: string): Promise<SavedQueue | null>;
   saveQueue(saved: SavedQueue): Promise<void>;
+  /**
+   * The favourites and play counts kept for `root` (PRD §10.1); empty when there are none yet. Rejects when the
+   * stored stats can't be read, and `saveStats` then refuses too, so the user's data is never written over.
+   */
+  loadStats(root: string): Promise<FolderStats>;
+  saveStats(root: string, stats: FolderStats): Promise<void>;
+}
+
+const UNREADABLE_STATS = 'The favourites and play counts file can’t be read, so it is left as it is.';
+
+/** One folder's stats from a stats file's text (null: none yet). */
+function folderStats(text: string | null, root: string): FolderStats {
+  if (text === null) return new Map();
+  const all = parseStatsFile(text);
+  if (!all) throw new Error(UNREADABLE_STATS);
+  return all.get(root) ?? new Map();
 }
 
 /** Kept in memory only: tests, and hosts that can't keep anything. */
 export function memoryIndexStore(): IndexStore & { readonly covers: Map<string, Picture> } {
   let saved: string | null = null;
   let queue: string | null = null;
+  const stats = new Map<string, string>();
   const covers = new Map<string, Picture>();
   return {
     covers,
@@ -51,6 +71,11 @@ export function memoryIndexStore(): IndexStore & { readonly covers: Map<string, 
       queue = JSON.stringify(q);
       return Promise.resolve();
     },
+    loadStats: (root) => Promise.resolve(folderStats(stats.get(root) ?? null, root)),
+    saveStats: (root, s) => {
+      stats.set(root, writeStatsFile(new Map([[root, s]])));
+      return Promise.resolve();
+    },
   };
 }
 
@@ -62,11 +87,16 @@ export interface IndexBridge {
   pruneCovers(keep: readonly string[]): Promise<void>;
   loadQueue(): Promise<string | null>;
   saveQueue(text: string): Promise<void>;
+  /** `stats.json`, every folder's stats in one file (PRD §10.1). */
+  loadStats(): Promise<string | null>;
+  saveStats(text: string): Promise<void>;
 }
 
 /** The desktop app's data folder; covers are shown from `coverUrl(id)`, an address the app serves. */
 export function bridgeIndexStore(bridge: IndexBridge, coverUrl: (id: string) => string): IndexStore {
   const known = new Set<string>();
+  /** Every folder's stats as last read, so saving one folder keeps the others; null until read or unreadable. */
+  let allStats: Map<string, FolderStats> | null = null;
   return {
     load: async (root) => {
       const text = await bridge.load();
@@ -86,13 +116,25 @@ export function bridgeIndexStore(bridge: IndexBridge, coverUrl: (id: string) => 
       return text === null ? null : parseSavedQueue(text, root);
     },
     saveQueue: (q) => bridge.saveQueue(JSON.stringify(q)),
+    loadStats: async (root) => {
+      const text = await bridge.loadStats();
+      allStats = text === null ? new Map() : parseStatsFile(text);
+      if (!allStats) throw new Error(UNREADABLE_STATS);
+      return allStats.get(root) ?? new Map();
+    },
+    saveStats: async (root, stats) => {
+      if (!allStats) throw new Error(UNREADABLE_STATS);
+      allStats.set(root, stats);
+      await bridge.saveStats(writeStatsFile(allStats));
+    },
   };
 }
 
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const INDEX = 'index';
 const COVERS = 'covers';
 const QUEUE = 'queue';
+const STATS = 'stats';
 
 function done<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -109,7 +151,7 @@ export function browserIndexStore(name = 'playlark'): IndexStore {
       const request = indexedDB.open(name, DB_VERSION);
       request.onupgradeneeded = () => {
         const names = request.result.objectStoreNames;
-        for (const store of [INDEX, COVERS, QUEUE])
+        for (const store of [INDEX, COVERS, QUEUE, STATS])
           if (!names.contains(store)) request.result.createObjectStore(store);
       };
       request.onsuccess = () => resolve(request.result);
@@ -153,6 +195,13 @@ export function browserIndexStore(name = 'playlark'): IndexStore {
     },
     saveQueue: async (q) => {
       await done((await store(QUEUE, 'readwrite')).put(JSON.stringify(q), q.root));
+    },
+    loadStats: async (root) => {
+      const text: unknown = await done((await store(STATS, 'readonly')).get(root));
+      return folderStats(typeof text === 'string' ? text : null, root);
+    },
+    saveStats: async (root, stats) => {
+      await done((await store(STATS, 'readwrite')).put(writeStatsFile(new Map([[root, stats]])), root));
     },
   };
 }

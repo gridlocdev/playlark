@@ -15,6 +15,8 @@ export const Channels = {
   pruneCovers: 'playlark:prune-covers',
   loadQueue: 'playlark:load-queue',
   saveQueue: 'playlark:save-queue',
+  loadStats: 'playlark:load-stats',
+  saveStats: 'playlark:save-stats',
   writePlaylist: 'playlark:write-playlist',
   renamePlaylist: 'playlark:rename-playlist',
   trashPlaylist: 'playlark:trash-playlist',

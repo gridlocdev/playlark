@@ -237,10 +237,10 @@ test.describe('Editing playlists', () => {
       const list = window.getByRole('grid', { name: 'Road Trip' });
       await list.getByRole('row', { name: /Salt Air/ }).click();
       await window.keyboard.press('Delete');
-      await expect(list.locator('tbody tr td:nth-child(2)')).toHaveText(['Night Bus']);
+      await expect(list.locator('tbody tr td.pl-col-title')).toHaveText(['Night Bus']);
       await expect.poll(() => entries('Road Trip.m3u8')).toHaveLength(1);
       await window.keyboard.press('ControlOrMeta+KeyZ');
-      await expect(list.locator('tbody tr td:nth-child(2)')).toHaveText(['Salt Air', 'Night Bus']);
+      await expect(list.locator('tbody tr td.pl-col-title')).toHaveText(['Salt Air', 'Night Bus']);
       await expect.poll(() => entries('Road Trip.m3u8')).toHaveLength(2);
 
       // Delete Playlist from its right-click menu: to the trash in the data folder, and Undo brings it back.

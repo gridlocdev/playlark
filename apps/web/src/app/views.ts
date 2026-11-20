@@ -8,7 +8,10 @@ export type View =
   | { readonly kind: 'artist'; readonly key: string }
   | { readonly kind: 'folders'; readonly path: string }
   | { readonly kind: 'search'; readonly query: string }
-  | { readonly kind: 'playlist'; readonly path: string };
+  | { readonly kind: 'playlist'; readonly path: string }
+  | { readonly kind: 'favourites' }
+  | { readonly kind: 'recent' }
+  | { readonly kind: 'mostPlayed' };
 
 export const SONGS: View = { kind: 'songs' };
 

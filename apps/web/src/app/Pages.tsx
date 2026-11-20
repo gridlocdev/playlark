@@ -2,7 +2,8 @@ import { useRef, useState } from 'preact/hooks';
 import { fold, type Album, type Artist, type CoverRef, type Folder, type Song } from '@playlark/core';
 import { formatCount, formatTime, Icon, useVirtualRows, type CommandCatalog } from '@playlark/ui';
 import type { AppController } from './controller.ts';
-import { SongList } from './SongList.tsx';
+import { collection, type CollectionKind } from './Collections.tsx';
+import { LIST_COLUMNS, SongList } from './SongList.tsx';
 import type { View } from './views.ts';
 
 /** How many artists and albums search shows before "Show all" (§6.4). */
@@ -29,6 +30,10 @@ export function viewTitle(app: AppController, view: View): string {
       return 'Search';
     case 'playlist':
       return app.playlists.nameOf(view.path);
+    case 'favourites':
+    case 'recent':
+    case 'mostPlayed':
+      return collection(view.kind).title;
   }
 }
 
@@ -60,7 +65,7 @@ export function CurrentView({
   const lib = app.library.value;
   switch (view.kind) {
     case 'songs':
-      return <SongList app={app} label="Songs" columns={['title', 'artist', 'album', 'time']} sortable />;
+      return <SongList app={app} label="Songs" columns={[...LIST_COLUMNS, 'plays']} sortable />;
     case 'albums':
       return <AlbumGrid app={app} albums={lib.albums} label="Albums" />;
     case 'album': {
@@ -97,10 +102,14 @@ export function CurrentView({
       ) : (
         <Gone text="This playlist is no longer in the music folder." />
       );
+    case 'favourites':
+    case 'recent':
+    case 'mostPlayed':
+      return <CollectionPage app={app} kind={view.kind} />;
   }
 }
 
-function Gone({ text }: { readonly text: string }) {
+export function Gone({ text }: { readonly text: string }) {
   return (
     <div class="pl-empty">
       <p>{text}</p>
@@ -141,7 +150,7 @@ export function Cover({
 }
 
 /** A page's Play and Shuffle buttons (§8.2). `songs` is read on the click, so it's the page's songs then. */
-function PlayButtons({
+export function PlayButtons({
   app,
   name,
   songs,
@@ -201,7 +210,7 @@ function PlaylistPage({ app, path }: { readonly app: AppController; readonly pat
         <SongList
           app={app}
           label={name}
-          columns={['title', 'artist', 'album', 'time']}
+          columns={LIST_COLUMNS}
           onMove={editable ? (indexes, to) => void app.playlists.move(path, indexes, to) : undefined}
         />
       )}
@@ -209,7 +218,7 @@ function PlaylistPage({ app, path }: { readonly app: AppController; readonly pat
   );
 }
 
-const songCount = (n: number) => (n === 1 ? '1 song' : `${formatCount(n)} songs`);
+export const songCount = (n: number) => (n === 1 ? '1 song' : `${formatCount(n)} songs`);
 const albumCount = (n: number) => (n === 1 ? '1 album' : `${formatCount(n)} albums`);
 
 /** A card's width and height in px, the gap included. */
@@ -324,7 +333,9 @@ function AlbumPage({ app, album }: { readonly app: AppController; readonly album
       <SongList
         app={app}
         label={album.title}
-        columns={mixed ? ['track', 'title', 'artist', 'time'] : ['track', 'title', 'time']}
+        columns={
+          mixed ? ['favourite', 'track', 'title', 'artist', 'time'] : ['favourite', 'track', 'title', 'time']
+        }
         discs={album.discs > 1}
       />
     </div>
@@ -425,9 +436,7 @@ function FolderPage({ app, folder }: { readonly app: AppController; readonly fol
           ))}
         </ul>
       )}
-      {folder.songs.length > 0 && (
-        <SongList app={app} label={folder.name || top} columns={['title', 'artist', 'album', 'time']} />
-      )}
+      {folder.songs.length > 0 && <SongList app={app} label={folder.name || top} columns={LIST_COLUMNS} />}
     </div>
   );
 }
@@ -480,8 +489,34 @@ function SearchPage({ app, query }: { readonly app: AppController; readonly quer
         )}
         {results.songs.length > 0 && <h3 class="pl-section-title">Songs</h3>}
       </div>
-      {results.songs.length > 0 && (
-        <SongList app={app} label="Songs" columns={['title', 'artist', 'album', 'time']} />
+      {results.songs.length > 0 && <SongList app={app} label="Songs" columns={LIST_COLUMNS} />}
+    </div>
+  );
+}
+
+/** Favourites, Recently Added or Most Played (§6.2), with Play and Shuffle. */
+function CollectionPage({ app, kind }: { readonly app: AppController; readonly kind: CollectionKind }) {
+  const { title, empty } = collection(kind);
+  const songs = app.rows.value;
+  return (
+    <div class="pl-page">
+      <header class="pl-page-head pl-page-head-plain">
+        <div class="pl-page-text">
+          <h2>{title}</h2>
+          <p class="pl-page-facts">{songCount(songs.length)}</p>
+          <div class="pl-page-actions">
+            <PlayButtons app={app} name={title} songs={() => app.rows.peek()} />
+          </div>
+        </div>
+      </header>
+      {songs.length === 0 ? (
+        <Gone text={empty} />
+      ) : (
+        <SongList
+          app={app}
+          label={title}
+          columns={kind === 'mostPlayed' ? [...LIST_COLUMNS, 'plays'] : LIST_COLUMNS}
+        />
       )}
     </div>
   );

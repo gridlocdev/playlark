@@ -70,6 +70,25 @@ export {
 } from './library/index.ts';
 export { sha256Hex } from './sha256.ts';
 export {
+  COUNT_AFTER,
+  MOST_PLAYED,
+  NO_STATS,
+  RECENT_DAYS,
+  STATS_FORMAT,
+  countAfter,
+  favourites,
+  listen,
+  mostPlayed,
+  moveStats,
+  noteAdded,
+  parseStatsFile,
+  recentlyAdded,
+  writeStatsFile,
+  type FolderStats,
+  type Listening,
+  type SongStats,
+} from './stats.ts';
+export {
   compareInAlbum,
   compareNames,
   compareSongs,

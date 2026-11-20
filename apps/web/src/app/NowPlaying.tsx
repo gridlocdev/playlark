@@ -1,7 +1,8 @@
 import { formatTime, Icon, type CommandCatalog } from '@playlark/ui';
 import type { AppController } from './controller.ts';
+import { Heart } from './SongList.tsx';
 
-/** The now-playing bar (PRD §8.1): the song, the transport buttons, the seek bar, the volume and the queue. */
+/** The now-playing bar (PRD §8.1): the song, the transport buttons, the seek bar, the heart, the volume and the queue. */
 export function NowPlaying({
   app,
   catalog,
@@ -98,6 +99,14 @@ export function NowPlaying({
         </div>
       </div>
       <div class="pl-now-right">
+        {song ? (
+          <Heart
+            on={app.stats.get(song.path).favourite}
+            onToggle={() => app.stats.toggleFavourite([song.path])}
+          />
+        ) : (
+          <span class="pl-heart" />
+        )}
         <Icon name={volume === 0 ? 'volume-x' : 'volume'} />
         <input
           type="range"

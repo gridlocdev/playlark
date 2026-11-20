@@ -12,7 +12,6 @@ import {
   scanLibrary,
   search,
   sortSongs,
-  sortSongsBy,
   songsUnder,
   type CoverRef,
   type ScanProgress,
@@ -34,7 +33,9 @@ import { Notices, type Notice } from './notices.ts';
 import { MISSING, Playlists } from './playlists.ts';
 import { QueueKeeper, goneNotice } from './queueKeeper.ts';
 import { NO_SELECTION, keep, only, selectedRows, type Selection } from './selection.ts';
+import { Stats } from './stats.ts';
 import { UndoStack } from './undo.ts';
+import { viewRows, type SongOrder } from './viewRows.ts';
 import {
   SONGS,
   back,
@@ -54,11 +55,7 @@ export const SCAN_UPDATE_MS = 500;
 /** How long typing in the search field pauses before the results update (§6.4). */
 export const SEARCH_IDLE_MS = 100;
 
-/** The Songs table's order: a column, or null for the default (§6.2). */
-export interface SongOrder {
-  readonly column: SongColumn | null;
-  readonly reverse: boolean;
-}
+export type { SongOrder } from './viewRows.ts';
 
 /** A playlist row's key: its entry's place and its song, since a playlist may hold a song twice (§9.2). */
 const entryKey = (index: number, path: string) => `${index}\0${path}`;
@@ -88,8 +85,10 @@ export interface ControllerOptions {
   readonly index?: IndexStore;
   /** A URL an `<img>` can show for bytes read from the folder (a folder's cover image). */
   readonly imageUrl?: (bytes: ArrayBuffer, mime: string) => string;
-  /** Today, for the index's scan date. */
+  /** Today, for the index's scan date and the stats' times. */
   readonly now?: () => Date;
+  /** A clock in ms that only goes forward, for how long a song was heard (§10.2); tests pin it. */
+  readonly clock?: () => number;
 }
 
 export class AppController {
@@ -113,7 +112,16 @@ export class AppController {
     return view.kind === 'search' ? search(this.searchIndex.value, view.query) : null;
   });
   /** The songs the current view lists, in their shown order: what Play, the keys and Select All work on. */
-  readonly rows = computed<readonly Song[]>(() => this.#rowsOf(this.view.value));
+  readonly rows = computed<readonly Song[]>(() =>
+    viewRows(this.view.value, {
+      library: this.library.value,
+      order: this.songOrder.value,
+      results: () => this.results.value,
+      playlist: (path) => this.playlists.songsOf(path),
+      stats: () => this.stats.songs.value,
+      now: () => this.#now().getTime(),
+    }),
+  );
   /**
    * Each row's key, what the selection holds: the song's path, or in a playlist the entry's place and path.
    */
@@ -151,6 +159,8 @@ export class AppController {
   /** Undo and Redo (§9.2). */
   readonly undo = new UndoStack();
   readonly playlists: Playlists;
+  /** Favourites and play counts (§10). */
+  readonly stats: Stats;
 
   readonly #index: IndexStore | undefined;
   readonly #now: () => Date;
@@ -193,6 +203,14 @@ export class AppController {
         this.history.value = playlistMoved(this.history.peek(), from, to);
       },
     });
+    this.stats = new Stats({
+      index: options.index,
+      player: this.player,
+      undo: this.undo,
+      say: (text, notice) => this.say(text, notice),
+      now: () => this.#now().getTime(),
+      ...(options.clock ? { clock: options.clock } : {}),
+    });
     this.#queueKeeper = new QueueKeeper({
       index: options.index,
       player: this.player,
@@ -226,6 +244,8 @@ export class AppController {
       this.searchText.value = '';
     });
     this.#covers.reset();
+    await this.stats.open(this.#root(source));
+    if (this.source.peek() !== source) return;
     // The index from last time is shown at once; the scan then brings it up to date (§3.3).
     const saved = await loadIndexSongs(this.#index, this.#root(source));
     if (saved && this.source.peek() === source) {
@@ -237,6 +257,12 @@ export class AppController {
 
   async #restoreQueue(source: LibrarySource): Promise<void> {
     await this.#queueKeeper.restore(this.#root(source), () => this.source.peek() === source);
+  }
+
+  /** Moves the seek bar, decodes ahead and counts plays (§10.2); the app calls it a few times a second. */
+  tick(): void {
+    this.player.tick();
+    this.stats.sample();
   }
 
   /** Keeps the queue for next time (§8.4). The app calls it every second. */
@@ -285,6 +311,7 @@ export class AppController {
       );
       if (this.#scan !== scan) return;
       const moves = findMoves(before, songs);
+      this.stats.scanned(songs, moves);
       batch(() => {
         const sel = this.selection.peek();
         const moved = sel.cursor === null ? undefined : moves.get(sel.cursor);
@@ -337,38 +364,6 @@ export class AppController {
       const sel = keep(this.selection.peek(), before, after);
       this.selection.value = sel.cursor === null && after[0] !== undefined ? only(after[0]) : sel;
     });
-  }
-
-  #rowsOf(view: View): readonly Song[] {
-    const lib = this.library.value;
-    switch (view.kind) {
-      case 'songs': {
-        const order = this.songOrder.value;
-        return order.column === null && !order.reverse
-          ? lib.songs
-          : sortSongsBy(lib.songs, order.column, order.reverse);
-      }
-      case 'album':
-        return lib.albumByKey.get(view.key)?.songs ?? [];
-      case 'artist': {
-        const artist = lib.artistByKey.get(view.key);
-        if (!artist) return [];
-        const theirs = (songs: readonly Song[]) => songs.filter((s) => fold(s.artist) === artist.key);
-        return [
-          ...artist.albums.flatMap((a) => a.songs),
-          ...artist.appearsOn.flatMap((a) => theirs(a.songs)),
-        ];
-      }
-      case 'folders':
-        return lib.folderByPath.get(view.path)?.songs ?? [];
-      case 'search':
-        return this.results.value?.songs ?? [];
-      case 'playlist':
-        return this.playlists.songsOf(view.path);
-      case 'albums':
-      case 'artists':
-        return [];
-    }
   }
 
   /** Opens `view` (§6.1). The cursor goes to its first song. */

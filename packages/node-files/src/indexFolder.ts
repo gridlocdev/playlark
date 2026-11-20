@@ -8,6 +8,8 @@ import { writeAtomic } from './atomic.ts';
 
 export const INDEX_FILE = 'library.json';
 export const QUEUE_FILE = 'queue.json';
+/** Favourites and play counts (PRD §10.1). */
+export const STATS_FILE = 'stats.json';
 export const COVERS_FOLDER = 'covers';
 
 const COVER_ID = /^[0-9a-f]{64}$/;
@@ -37,6 +39,9 @@ export interface IndexFolder {
   /** The play queue kept between runs (PRD §8.4), or null. */
   loadQueue(): Promise<string | null>;
   saveQueue(text: string): Promise<void>;
+  /** Favourites and play counts (PRD §10.1), or null when there are none yet. */
+  loadStats(): Promise<string | null>;
+  saveStats(text: string): Promise<void>;
 }
 
 function isMissing(e: unknown): boolean {
@@ -66,6 +71,8 @@ export function indexFolder(dir: string): IndexFolder {
     save: (text) => writeAtomic(path.join(dir, INDEX_FILE), text),
     loadQueue: () => readText(QUEUE_FILE),
     saveQueue: (text) => writeAtomic(path.join(dir, QUEUE_FILE), text),
+    loadStats: () => readText(STATS_FILE),
+    saveStats: (text) => writeAtomic(path.join(dir, STATS_FILE), text),
     saveCover: async (id, mime, data) => {
       const ext = EXTENSIONS[mime];
       if (!COVER_ID.test(id) || !ext) throw new Error('That is not a cover Playlark stores.');
