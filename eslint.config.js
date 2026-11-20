@@ -11,6 +11,7 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      '.e2e-build/**',
       '**/out/**',
       '**/release/**',
       '**/.types/**',

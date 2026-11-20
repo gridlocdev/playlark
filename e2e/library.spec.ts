@@ -82,7 +82,7 @@ test.describe('Playing songs', () => {
 });
 
 test.describe('The queue', () => {
-  test('shows what plays next, and a click there jumps to it', async ({ page }) => {
+  test('shows what plays next, and a double-click there jumps to it', async ({ page }) => {
     const errors = watchErrors(page);
     await openApp(page);
     await songs(page)
@@ -92,7 +92,7 @@ test.describe('The queue', () => {
     const queue = page.getByRole('complementary', { name: 'Queue' });
     await expect(queue).toContainText('Salt Air');
     await expect(queue).toContainText('untagged');
-    await queue.getByText('Night Bus').click();
+    await queue.getByText('Night Bus').dblclick();
     await expect(nowPlaying(page)).toContainText('Night Bus');
     await page.keyboard.press('ControlOrMeta+Alt+ArrowRight');
     await page.keyboard.press('ControlOrMeta+Alt+KeyU');

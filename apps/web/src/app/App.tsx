@@ -1,4 +1,5 @@
-import { Icon, type CommandCatalog } from '@playlark/ui';
+import { Icon, PopupMenu, type CommandCatalog } from '@playlark/ui';
+import { SONG_MENU } from './commands.ts';
 import type { AppController } from './controller.ts';
 import { Dialogs } from './Dialogs.tsx';
 import { NowPlaying } from './NowPlaying.tsx';
@@ -92,11 +93,23 @@ export function App({ app, catalog }: { readonly app: AppController; readonly ca
         <main class="pl-view">
           <CurrentView app={app} catalog={catalog} />
         </main>
-        {app.queueShown.value && <QueuePanel app={app} />}
+        {app.queueShown.value && <QueuePanel app={app} catalog={catalog} />}
       </div>
       <NowPlaying app={app} catalog={catalog} />
       <StatusBar app={app} />
       <Dialogs app={app} catalog={catalog} />
+      {app.menu.value && (
+        <PopupMenu
+          label="Song"
+          catalog={catalog}
+          items={SONG_MENU}
+          x={app.menu.value.x}
+          y={app.menu.value.y}
+          onClose={() => {
+            app.menu.value = null;
+          }}
+        />
+      )}
     </div>
   );
 }

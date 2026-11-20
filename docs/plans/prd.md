@@ -163,7 +163,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 - Playback uses Web Audio. A song's file is read whole and decoded (`decodeAudioData`) into memory; playback starts once it's decoded (a typical 40 MB FLAC: under 1 s on the desktop).
 - The next song in the queue is read and decoded when the current one has 30 s left (or at once if it's shorter), and is scheduled to start at the exact sample the current one ends. At most two decoded songs are held at once.
 - Trimming (§4.3): the decoder's output is compared with the real sample count. If it's longer, the encoder delay is cut from the start and the rest from the end; if it already matches, nothing is cut. So songs join without a gap whether or not the decoder trims for us.
-- The graph is: buffer source → ReplayGain gain (§8.6) → crossfade gain (§8.7) → volume gain → a `MediaStreamAudioDestinationNode` played by one hidden `<audio>` element. The `<audio>` element is what the system sees as playing, which is what Media Session (§15) needs.
+- The graph is: buffer source → the song's own gain (its ReplayGain level, §8.6, shaped by the crossfade curve while it fades, §8.7) → volume gain → a `MediaStreamAudioDestinationNode` played by one hidden `<audio>` element. The `<audio>` element is what the system sees as playing, which is what Media Session (§15) needs.
 - Seeking restarts the buffer at the new position (no gap in the UI, a 10 ms ramp to avoid a click). Pause and resume use `AudioContext.suspend()`/`resume()`.
 - A song that can't be decoded (§12) is skipped with "Skipped <title>: can't play this format here." Three failures in a row stop playback with "Playback stopped: 3 songs in a row couldn't be played."
 - Volume: 0–100 % on a perceptual curve, remembered (§19). ⌘↑/⌘↓ change it by 10 %.
@@ -173,7 +173,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 - The queue panel (⌥⌘U) lists the current song and **Up Next**. Up Next rows can be dragged to reorder, removed (Delete, or the row's ×), and played (double-click jumps there). **Clear** empties Up Next. History isn't kept in 1.0.
 - **Next** (⌘→) goes to the next entry. **Previous** (⌘←) restarts the song if more than 3 s in, else goes to the previous entry (the first entry restarts).
 - At the end of the queue with repeat off, playback stops; the last song stays shown, paused at 0:00.
-- The queue (paths), the current entry, the position, shuffle and repeat are saved every 5 s while playing and on every change (desktop: `state.json` in the app's data folder; browser and NAS client: the browser's storage, per device), and restored paused on start. Entries whose files are gone are dropped with "2 songs in your queue are gone and were removed."
+- The queue (paths), the current entry, the position, shuffle and repeat are saved every 5 s while playing and on every change (desktop: `queue.json` in the app's data folder, beside the library index; browser and NAS client: the browser's storage, per device). A saved queue belongs to one music folder and is ignored for any other, and restored paused on start. Entries whose files are gone are dropped with "2 songs in your queue are gone and were removed."
 
 ### §8.5 Shuffle and repeat
 
@@ -189,7 +189,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 
 - Setting: Off (default), or 1–12 s. An equal-power fade between songs.
 - Never between consecutive tracks of the same album (same album, track n then n+1): those always join gaplessly. Never on Repeat One.
-- Next and Previous pressed by hand cut over with a 10 ms ramp, no crossfade.
+- Next and Previous pressed by hand cut over with a 10 ms ramp, no crossfade. When the song they go to was already decoded ahead (§8.3), it starts at once.
 
 ## §9 Playlists
 

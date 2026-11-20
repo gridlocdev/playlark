@@ -15,7 +15,8 @@ export function NowPlaying({
   const position = player.position.value;
   const duration = player.duration.value;
   const volume = player.volume.value;
-  const button = (id: string, icon: string, label: string, extra = '') => {
+  const repeat = player.repeat.value;
+  const button = (id: string, icon: string, label: string, extra = '', pressed?: boolean) => {
     const c = catalog.get(id)!;
     const keys = catalog.keys(c).join(' ');
     return (
@@ -23,6 +24,7 @@ export function NowPlaying({
         type="button"
         class={`pl-icon-button ${extra}`}
         aria-label={label}
+        aria-pressed={pressed}
         title={keys ? `${label} (${keys})` : label}
         disabled={!catalog.isEnabled(c)}
         onClick={() => catalog.run(id)}
@@ -34,16 +36,35 @@ export function NowPlaying({
   return (
     <section class="pl-now" aria-label="Now playing">
       <div class="pl-now-song">
-        <div class="pl-now-cover" aria-hidden="true">
+        <button
+          type="button"
+          class="pl-now-cover"
+          aria-label={song ? `Go to ${song.album}` : 'Not playing'}
+          disabled={!song}
+          onClick={() => song && app.goToAlbum(song)}
+        >
           {app.nowCover.value ? <img src={app.nowCover.value} alt="" /> : <Icon name="music" />}
-        </div>
+        </button>
         <div class="pl-now-text">
-          <div class="pl-now-title">{state === 'loading' ? 'Loading…' : (song?.title ?? 'Not playing')}</div>
-          <div class="pl-now-artist">{song?.artist ?? ''}</div>
+          {song && state !== 'loading' ? (
+            <button type="button" class="pl-now-title pl-link" onClick={() => app.goToAlbum(song)}>
+              {song.title}
+            </button>
+          ) : (
+            <div class="pl-now-title">{state === 'loading' ? 'Loading…' : 'Not playing'}</div>
+          )}
+          {song ? (
+            <button type="button" class="pl-now-artist pl-link" onClick={() => app.goToArtist(song)}>
+              {song.artist}
+            </button>
+          ) : (
+            <div class="pl-now-artist" />
+          )}
         </div>
       </div>
       <div class="pl-now-middle">
         <div class="pl-transport">
+          {button('controls.shuffle', 'shuffle', 'Shuffle', 'pl-toggle', player.shuffle.value)}
           {button('controls.previous', 'skip-back', 'Previous')}
           {button(
             'controls.playPause',
@@ -52,6 +73,13 @@ export function NowPlaying({
             `pl-play${state === 'loading' ? ' pl-loading' : ''}`,
           )}
           {button('controls.next', 'skip-forward', 'Next')}
+          {button(
+            'controls.repeat',
+            repeat === 'one' ? 'repeat-1' : 'repeat',
+            repeat === 'one' ? 'Repeat One' : repeat === 'all' ? 'Repeat All' : 'Repeat',
+            'pl-toggle',
+            repeat !== 'off',
+          )}
         </div>
         <div class="pl-seek">
           <span class="pl-time">{formatTime(position)}</span>

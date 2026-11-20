@@ -169,7 +169,7 @@ setup:
 # Remove build output.
 [group('housekeeping')]
 clean:
-    rm -rf .e2e-data apps/web/dist apps/desktop/out "{{ release }}" .headless-data .e2e-results .e2e-report .types-e2e .types-test
+    rm -rf .e2e-data .e2e-build apps/web/dist apps/desktop/out "{{ release }}" .headless-data .e2e-results .e2e-report .types-e2e .types-test
     find . -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete
 
 # Remove build output and every node_modules (run `just setup` after).

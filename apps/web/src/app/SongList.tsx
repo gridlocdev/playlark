@@ -3,7 +3,7 @@ import type { Song, SongColumn } from '@playlark/core';
 import { formatTime, useVirtualRows } from '@playlark/ui';
 import type { AppController } from './controller.ts';
 import { PlayingMark } from './PlayingMark.tsx';
-import { click, step } from './selection.ts';
+import { click, only, step } from './selection.ts';
 
 /** Each row's height in px: the list draws only the rows in view (PRD §6.1), so every row is the same height. */
 export const ROW_HEIGHT = 28;
@@ -136,6 +136,12 @@ export function SongList({
                 selected={selection.paths.has(line.song.path)}
                 playing={line.song.path === playing ? state : null}
                 onPick={(e) => pick(e, line.song.path)}
+                onMenu={(e) => {
+                  // A right-click on a song outside the selection selects just it, as the Music app does.
+                  if (!selection.paths.has(line.song.path)) app.selection.value = only(line.song.path);
+                  grid.current?.focus();
+                  app.menu.value = { x: e.clientX, y: e.clientY };
+                }}
                 onPlay={() => void app.playPath(line.song.path)}
               />
             ),
@@ -177,6 +183,7 @@ function SongRow(props: {
   /** The player's state when this is the playing song. */
   readonly playing: string | null;
   readonly onPick: (e: MouseEvent) => void;
+  readonly onMenu: (e: MouseEvent) => void;
   readonly onPlay: () => void;
 }) {
   const { song: s } = props;
@@ -198,7 +205,11 @@ function SongRow(props: {
       onMouseDown={(e) => {
         // Keep focus on the table, so the keys keep working after a click.
         e.preventDefault();
-        props.onPick(e);
+        if (e.button === 0) props.onPick(e);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        props.onMenu(e);
       }}
       onDblClick={() => !s.error && props.onPlay()}
     >

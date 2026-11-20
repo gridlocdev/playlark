@@ -25,10 +25,14 @@ import {
   after,
   debounce,
   every,
+  formatCount,
   type AudioEngine,
   type IndexStore,
   type LibrarySource,
+  type PlaybackSettings,
 } from '@playlark/ui';
+import { Covers } from './covers.ts';
+import { QueueKeeper, goneNotice } from './queueKeeper.ts';
 import { NO_SELECTION, keep, only, selectedRows, type Selection } from './selection.ts';
 import { SONGS, back, forward, go, replace, startHistory, type History, type View } from './views.ts';
 
@@ -72,6 +76,10 @@ export interface ControllerOptions {
   readonly cannotOpen?: string;
   readonly volume?: number;
   readonly onVolume?: (volume: number) => void;
+  /** ReplayGain and crossfade (§8.6, §8.7). */
+  readonly playback?: () => PlaybackSettings;
+  /** A seed for each shuffle; tests pin it. */
+  readonly seed?: () => number;
   /** Where the index and its covers are kept between runs (§3.2). Absent: nothing is kept. */
   readonly index?: IndexStore;
   /** A URL an `<img>` can show for bytes read from the folder (a folder's cover image). */
@@ -118,18 +126,23 @@ export class AppController {
   readonly announcement = signal('');
   readonly dialog = signal<DialogKind | null>(null);
   readonly queueShown = signal(false);
+  /** The Up Next entry the queue panel's cursor is on (an index in the queue), or null. */
+  readonly queueCursor = signal<number | null>(null);
+  /** The queue panel's list has the keyboard, so Delete removes from it. */
+  readonly queueFocused = signal(false);
+  /** The song list's right-click menu, where it was opened. */
+  readonly menu = signal<{ readonly x: number; readonly y: number } | null>(null);
   /** Cover URLs worked out so far, by cover; null: none could be made. */
-  readonly #covers = signal<ReadonlyMap<string, string | null>>(new Map());
-  readonly #coverLoads = new Set<string>();
   /** The playing song's cover, as a URL, or null for the placeholder (§4.6). */
   readonly nowCover = computed(() => this.coverOf(this.player.currentSong.value?.cover));
   readonly player: Player;
 
   readonly #index: IndexStore | undefined;
-  readonly #imageUrl: ((bytes: ArrayBuffer, mime: string) => string) | undefined;
   readonly #now: () => Date;
   #noticeTimer: (() => void) | null = null;
   #scan: AbortController | null = null;
+  readonly #covers: Covers;
+  readonly #queueKeeper: QueueKeeper;
   readonly #searching = debounce(SEARCH_IDLE_MS, () => this.#showSearch());
 
   constructor(options: ControllerOptions) {
@@ -137,7 +150,6 @@ export class AppController {
     this.folders = options.folders;
     this.cannotOpen = options.cannotOpen;
     this.#index = options.index;
-    this.#imageUrl = options.imageUrl;
     this.#now = options.now ?? (() => new Date());
     this.player = new Player({
       engine: options.engine,
@@ -150,6 +162,18 @@ export class AppController {
       say: (text, tone) => this.say(text, tone ? { tone } : {}),
       ...(options.volume !== undefined ? { volume: options.volume } : {}),
       ...(options.onVolume ? { onVolume: options.onVolume } : {}),
+      ...(options.playback ? { playback: options.playback } : {}),
+      ...(options.seed ? { seed: options.seed } : {}),
+    });
+    this.#covers = new Covers({
+      index: options.index,
+      imageUrl: options.imageUrl,
+      source: () => this.source.peek(),
+    });
+    this.#queueKeeper = new QueueKeeper({
+      index: options.index,
+      player: this.player,
+      say: (text, tone) => this.say(text, tone ? { tone } : {}),
     });
   }
 
@@ -158,42 +182,15 @@ export class AppController {
     return source.where ?? source.name;
   }
 
-  /**
-   * The URL for a cover, or null for the placeholder (§4.6). The first call for a cover starts working it out
-   * and returns null; the signal redraws whoever asked once it is ready.
-   */
+  /** The URL for a cover, or null for the placeholder (§4.6). */
   coverOf(cover: CoverRef | undefined): string | null {
-    if (!cover) return null;
-    const key = cover.kind === 'embedded' ? `id:${cover.id}` : `file:${cover.path}`;
-    const known = this.#covers.value.get(key);
-    if (known !== undefined) return known;
-    if (!this.#coverLoads.has(key)) {
-      this.#coverLoads.add(key);
-      void this.#coverUrl(cover).then((url) => {
-        this.#coverLoads.delete(key);
-        this.#covers.value = new Map(this.#covers.peek()).set(key, url);
-      });
-    }
-    return null;
-  }
-
-  /** Never throws: a cover that can't be read is the placeholder. */
-  async #coverUrl(cover: CoverRef): Promise<string | null> {
-    try {
-      if (cover.kind === 'embedded') return (await this.#index?.coverUrl(cover.id)) ?? null;
-      const source = this.source.peek();
-      const imageUrl = this.#imageUrl;
-      if (!source || !imageUrl) return null;
-      const mime = cover.path.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-      return imageUrl(await source.bytes(cover.path), mime);
-    } catch {
-      return null;
-    }
+    return this.#covers.urlOf(cover);
   }
 
   /** Opens `source` in place of the folder open now: playback stops and the songs are read again. */
   async open(source: LibrarySource): Promise<void> {
     this.player.stop();
+    this.#queueKeeper.reset();
     batch(() => {
       this.source.value = source;
       this.songs.value = [];
@@ -201,12 +198,25 @@ export class AppController {
       this.selection.value = NO_SELECTION;
       this.history.value = startHistory();
       this.searchText.value = '';
-      this.#covers.value = new Map();
     });
+    this.#covers.reset();
     // The index from last time is shown at once; the scan then brings it up to date (§3.3).
     const saved = await this.#loadIndex(source);
-    if (saved && this.source.peek() === source) this.#setSongs(saved);
+    if (saved && this.source.peek() === source) {
+      this.#setSongs(saved);
+      await this.#restoreQueue(source);
+    }
     await this.rescan();
+  }
+
+  async #restoreQueue(source: LibrarySource): Promise<void> {
+    await this.#queueKeeper.restore(this.#root(source), () => this.source.peek() === source);
+  }
+
+  /** Keeps the queue for next time (§8.4). The app calls it every second. */
+  async keepQueue(): Promise<void> {
+    const source = this.source.peek();
+    if (source) await this.#queueKeeper.keep(this.#root(source));
   }
 
   async #loadIndex(source: LibrarySource): Promise<readonly Song[] | null> {
@@ -272,6 +282,9 @@ export class AppController {
         if (moved !== undefined && this.rowPaths.peek().includes(moved)) this.selection.value = only(moved);
         this.scanned.value = true;
       });
+      const gone = this.player.prune();
+      if (gone > 0) this.say(goneNotice(gone));
+      await this.#restoreQueue(source);
       await this.#saveIndex(source, songs);
       const unreadable = songs.filter((s) => s.error).length;
       if (unreadable > 0)
@@ -434,6 +447,52 @@ export class AppController {
       playable.map((s) => s.path),
       index,
     );
+  }
+
+  /** The Shuffle buttons (§8.2): every readable song in `songs`, in a random order. */
+  shuffleSongs(songs: readonly Song[]): Promise<void> {
+    const playable = songs.filter((s) => !s.error).map((s) => s.path);
+    return playable.length === 0 ? Promise.resolve() : this.player.shuffleAll(playable);
+  }
+
+  /** Play Next (§8.2): right after the playing song, without interrupting it. */
+  playNext(songs: readonly Song[]): void {
+    const playable = songs.filter((s) => !s.error);
+    if (playable.length === 0) return;
+    this.player.playNext(playable.map((s) => s.path));
+    this.say(
+      playable.length === 1
+        ? `Playing next: ${playable[0]!.title}`
+        : `Playing next: ${formatCount(playable.length)} songs`,
+    );
+  }
+
+  /** Add to Queue (§8.2): at the end. */
+  addToQueue(songs: readonly Song[]): void {
+    const playable = songs.filter((s) => !s.error);
+    if (playable.length === 0) return;
+    this.player.addToQueue(playable.map((s) => s.path));
+    this.say(
+      playable.length === 1
+        ? `Added ${playable[0]!.title} to the queue.`
+        : `Added ${formatCount(playable.length)} songs to the queue.`,
+    );
+  }
+
+  /** Delete in the queue panel: takes out the entry under its cursor; the cursor stays on the one after (§8.4). */
+  removeFromQueue(): void {
+    const at = this.queueCursor.peek();
+    if (at === null) return;
+    this.player.remove([at]);
+    const q = this.player.queue.peek();
+    this.queueCursor.value =
+      at < q.items.length && at > q.index ? at : q.items.length - 1 > q.index ? q.items.length - 1 : null;
+  }
+
+  /** The songs the Song commands act on: the selection, or the cursor's song. */
+  selectedSongs(): Song[] {
+    const byPath = this.byPath.peek();
+    return selectedRows(this.selection.peek(), this.rowPaths.peek()).flatMap((p) => byPath.get(p) ?? []);
   }
 
   /** Plays the view's songs from `path` (§8.2, a double-click). */

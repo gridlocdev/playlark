@@ -42,9 +42,25 @@ The toolbar's arrows, ⌘[ and ⌘] walk back and forward through the views you 
 
 Play, pause, next, previous, skip 10 seconds and volume, from the now-playing bar, the keyboard, the media keys or the lock screen. Playing a song queues the whole list from there, and each song starts as the last one ends. Previous goes back to the start of the song after 3 seconds. The volume is remembered.
 
+## Gapless playback
+
+Each song starts on the exact sample the last one ends, so a live album or a DJ mix plays without a gap or a click, in every format. The next song is read and decoded while the current one has 30 seconds left. ReplayGain (Album by default) evens out loudness, and an optional crossfade blends songs, except consecutive tracks of one album.
+
 ## The queue
 
-The queue panel (⌥⌘U) shows the playing song and what comes after it. Click a song in it to jump there.
+The queue panel (⌥⌘U) shows the playing song and **Up Next**. Double-click or press Return to jump to a song, drag one to move it, press Delete or click its × to take it out, and **Clear** to empty Up Next.
+
+## Play Next and Add to Queue
+
+Right-click a song, or the selected songs, for **Play Next** (right after the playing song) or **Add to Queue** (at the end). Neither stops what's playing, and the status bar says what was added.
+
+## Shuffle and repeat
+
+**Shuffle** (⌘S) shuffles what comes after the playing song; turning it off puts the original order back. The **Shuffle** buttons on album, artist and folder pages play them shuffled. **Repeat** (⌥⌘R) goes Off, All, One: All starts the queue again after the last song, and One plays the song again without a gap.
+
+## Picking up where you left off
+
+The queue, the song and the place in it, shuffle and repeat are kept, and come back paused the next time Playlark opens the same folder. Songs that are gone by then are dropped, and the status bar says how many.
 
 ## Desktop app
 

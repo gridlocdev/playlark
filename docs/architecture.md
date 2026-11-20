@@ -7,6 +7,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
      │  App · Pages · SongList · NowPlaying · QueuePanel         │
      │  AppController (folder, library, views, selection,       │
      │                 search, notices) · views · selection      │
+     │  Covers · QueueKeeper                                     │
      │  commands.ts · nativeMenu.ts · mediaSession.ts            │
      └─────────────────────────────┬─────────────────────────────┘
                                    │ imports
@@ -29,7 +30,8 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
      │  tags: ID3v1/v2, MP3 stream, FLAC, MP4, Ogg, WAV          │
      │  library: files, songs, sort, scanLibrary, index, covers  │
      │           browse (albums, artists, folders), search       │
-     │  queue                                                    │
+     │  queue (shuffle, repeat, edits, saved queue) · playback   │
+     │  (trim, ReplayGain, crossfade)                            │
      └──────────────────────────────────────────────────────────┘
 
  packages/node-files  Node only: folder listings confined to the folder, media replies with Range, atomic writes
@@ -59,12 +61,14 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 - **Sorting (§5).** The sort is natural and ignores case and a leading "The ". Sort names win when a song has them. `sortSongsBy` sorts by a column for the Songs view.
 - **Browsing (§4.4, §6.2).** `buildLibrary` groups the songs into albums (by album artist and title, folded for case and accents), artists with their own albums and the ones they appear on, and the folder tree. Unreadable songs stay out of albums and artists.
 - **Search (§6.4).** `prepareSearch` folds each song's words once; `search` keeps the artists, albums and songs where every query word starts some word.
-- **The queue (§6).** The queue is immutable. It has `playFrom`, `next`, `previous` (Previous restarts the song after 3 s) and `prune`.
+- **The queue (§8.4, §8.5).** The queue is immutable: every edit returns a new one. It holds the paths in play order, the playing index, repeat, and with shuffle on each entry's rank in the original order, so turning shuffle off sorts them back. `next(q, auto)` knows that Repeat One replays only when a song ends by itself; `following` says what plays after the current song. `saveQueue` and `parseSavedQueue` write and read it, tied to one music folder.
+- **Playback (§8.3, §8.6, §8.7).** `trimFor` works out how much of a decoded buffer is the song (cutting the encoder delay and padding only when the decoder didn't), `replayGainFactor` the song's level, and `crossfadeFor` and `fadeCurves` the equal-power fade.
 
 ## UI (`packages/ui`)
 
 - **`Player`** holds the queue, the play state (`stopped`, `loading`, `playing`, `paused`), the position, the duration and the volume, as signals. It reads song bytes through the library source and hands them to an `AudioEngine`. After `MAX_FAILURES` songs in a row fail, it stops. If the browser keeps the sound off until the user acts, the player pauses and says so.
-- **`WebAudioEngine`** decodes songs and plays them through a gain node.
+- **`Player`** decodes the following song once 30 s are left and hands it to the engine to start where the current one ends; Next by hand reuses that buffer. Edits to the queue take back and requeue what was handed over.
+- **`WebAudioEngine`** decodes and trims songs and plays each through its own gain into the volume gain. The queued song's source is started at the exact context time the playing one ends, and with a crossfade both gains follow the fade curves. It takes an `EngineContext` and an `EngineOutput`, so the gapless scenario (`e2e/gapless.spec.ts`) renders it into an `OfflineAudioContext` and checks the join sample by sample.
 - **Library sources** list the music files and give each one a `ByteSource` and a URL to play from.
 - **Index stores** keep the index and its covers between runs: IndexedDB in the browser, the data folder over the bridge on the desktop.
 - **Commands.**
@@ -74,7 +78,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 
 ## Web app (`apps/web`)
 
-- **`AppController`** holds the window's state as signals: the open folder, its songs and the library built from them, the scan, the view history (`views.ts`: back and forward), the songs the view shows and their selection (`selection.ts`), the search, the covers, the open dialog and the status-bar notice. Components read the signals, and commands call the controller's methods. Opening a folder shows its saved index at once, then rescans, updating the list every 500 ms, and saves the result.
+- **`AppController`** holds the window's state as signals: the open folder, its songs and the library built from them, the scan, the view history (`views.ts`: back and forward), the songs the view shows and their selection (`selection.ts`), the search, the covers, the open dialog and the status-bar notice. Components read the signals, and commands call the controller's methods. Opening a folder shows its saved index at once, then rescans, updating the list every 500 ms, and saves the result. `Covers` turns cover references into URLs once each, and `QueueKeeper` saves the queue for the open folder (called every second; it writes when the queue changed or the position moved 5 s) and puts it back paused.
 - `Pages.tsx` draws each view; `SongList.tsx` is the one song table, drawing only the rows in view through `useVirtualRows`. Every row is 28 px, so the scroll position says which rows show.
 - `main.tsx` picks the library source:
   - the desktop bridge when the app runs in Electron;
@@ -92,5 +96,5 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 ## Desktop (`apps/desktop`)
 
 - `crashGuard.ts` is registered first in the main process. An uncaught error or an unhandled rejection is logged, and the app exits with an error. Electron never shows it in a dialog.
-- The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder, and stored covers at `app://playlark/cover/<sha256>`. The index is `library.json` in the data folder, with the covers in `covers/` beside it.
+- The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder, and stored covers at `app://playlark/cover/<sha256>`. The index is `library.json` in the data folder, with the covers in `covers/` beside it and the queue in `queue.json`.
 - With `--headless`, the app runs with no window, no Dock icon and no sound, on a throwaway profile. It skips native dialogs and records each one in `globalThis.playlarkHeadless`.

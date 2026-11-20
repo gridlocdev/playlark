@@ -25,5 +25,7 @@ contextBridge.exposeInMainWorld('playlarkNative', {
     saveCover: (id: string, mime: string, data: Uint8Array) =>
       ipcRenderer.invoke('playlark:save-cover', id, mime, data),
     pruneCovers: (keep: readonly string[]) => ipcRenderer.invoke('playlark:prune-covers', keep),
+    loadQueue: () => ipcRenderer.invoke('playlark:load-queue'),
+    saveQueue: (text: string) => ipcRenderer.invoke('playlark:save-queue', text),
   },
 });

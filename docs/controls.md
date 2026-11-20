@@ -45,6 +45,10 @@ Every shortcut, on macOS and on Windows and Linux. The Keyboard Shortcuts window
 | Skip back 10 s                                 | **⌥⌘←** | **Ctrl+Alt+Left**  |
 | Volume up                                      | **⌘↑**  | **Ctrl+Up**        |
 | Volume down                                    | **⌘↓**  | **Ctrl+Down**      |
+| Shuffle on or off                              | **⌘S**  | **Ctrl+S**         |
+| Repeat: off, all, one                          | **⌥⌘R** | **Ctrl+Alt+R**     |
+
+Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Go to Album** and **Go to Artist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
 
 The media keys on the keyboard, headphones and the lock screen also play, pause and skip.
 
@@ -53,6 +57,16 @@ The media keys on the keyboard, headphones and the lock screen also play, pause 
 | Action                 | macOS   | Windows / Linux |
 | ---------------------- | ------- | --------------- |
 | Show or hide the queue | **⌥⌘U** | **Ctrl+Alt+U**  |
+
+## Queue
+
+| Action                         | macOS                        | Windows / Linux                           |
+| ------------------------------ | ---------------------------- | ----------------------------------------- |
+| Move through Up Next           | **↑** **↓** **↖** **↘**      | **Up** **Down** **Home** **End**          |
+| Play the song under the cursor | **↩** or double-click        | **Enter** or double-click                 |
+| Remove the song from the queue | **⌫** or **⌦**, or its **×** | **Backspace** or **Delete**, or its **×** |
+| Move a song                    | drag it                      | drag it                                   |
+| Clear Up Next                  | **Clear**                    | **Clear**                                 |
 
 ## Help
 

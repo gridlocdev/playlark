@@ -53,12 +53,22 @@ export {
   type IndexBridge,
   type IndexStore,
 } from './library/indexStore.ts';
-export { WebAudioEngine, volumeGain, type AudioEngine, type DecodedSong } from './player/engine.ts';
+export {
+  RAMP,
+  WebAudioEngine,
+  volumeGain,
+  type AudioEngine,
+  type DecodedSong,
+  type EngineContext,
+  type EngineOutput,
+} from './player/engine.ts';
 export {
   MAX_FAILURES,
   Player,
+  PRELOAD_AHEAD,
   SEEK_STEP,
   VOLUME_STEP,
+  type PlaybackSettings,
   type PlayState,
   type PlayerOptions,
 } from './player/player.ts';

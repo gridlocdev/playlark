@@ -98,6 +98,42 @@ export {
   type ScanProgress,
   type ScanSource,
 } from './library/scan.ts';
-export { current, EMPTY_QUEUE, next, playFrom, previous, prune, RESTART_AFTER, type Queue } from './queue.ts';
+export {
+  addToQueue,
+  clearUpNext,
+  current,
+  cycleRepeat,
+  EMPTY_QUEUE,
+  following,
+  isShuffled,
+  jumpTo,
+  move,
+  next,
+  parseSavedQueue,
+  playFrom,
+  playNext,
+  previous,
+  prune,
+  random,
+  removeAt,
+  RESTART_AFTER,
+  saveQueue,
+  setShuffle,
+  shuffleAll,
+  shuffled,
+  type Queue,
+  type Repeat,
+  type SavedQueue,
+} from './queue.ts';
+export {
+  CROSSFADE_MAX,
+  crossfadeFor,
+  fadeCurves,
+  PREAMP_LIMIT,
+  replayGainFactor,
+  trimFor,
+  type ReplayGainMode,
+  type Trim,
+} from './playback.ts';
 export { id3v2Tags, parseId3v2, type Id3v2 } from './tags/id3v2.ts';
 export { parseId3v1 } from './tags/id3v1.ts';

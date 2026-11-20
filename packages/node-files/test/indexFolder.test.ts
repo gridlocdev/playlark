@@ -21,6 +21,9 @@ describe('the index folder', () => {
     expect(await f.load()).toBeNull();
     await f.save('{"format":1}');
     expect(await f.load()).toBe('{"format":1}');
+    expect(await f.loadQueue()).toBeNull();
+    await f.saveQueue('{"queue":1}');
+    expect(await f.loadQueue()).toBe('{"queue":1}');
   });
 
   it('stores each cover once, finds it by id, and prunes the unused ones', async () => {

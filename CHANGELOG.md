@@ -10,6 +10,9 @@
 - Browse by Albums, Artists and Folders, with album and artist pages, back and forward (⌘[ ⌘]), and a sidebar (⌥⌘S). Sort the song list by any column.
 - Search (⌘F) finds artists, albums and songs as you type, ignoring case and accents.
 - Select several songs with ⇧ and ⌘, or all of them (⌘A), and play just those. Go to Album, Go to Artist and Go to Current Song (⌘L).
+- Gapless playback: each song starts on the exact sample the last one ends, in every format, with ReplayGain (Album by default) and an optional crossfade.
+- The queue panel: drag to reorder, Delete or × to remove, Clear Up Next. Play Next and Add to Queue from the song's right-click menu. Shuffle (⌘S), Repeat Off/All/One (⌥⌘R), and Shuffle buttons on album, artist and folder pages.
+- The queue comes back paused, on the same song and second, the next time the folder is opened.
 - Lists draw only the rows in view, so very large libraries scroll smoothly.
 - Files that can't be read stay listed, and the status bar's **Show** lists each one with the reason.
 - Sort names (artist, album artist, album, title) and ReplayGain values are read from every format.

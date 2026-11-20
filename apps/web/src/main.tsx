@@ -24,6 +24,8 @@ import pkg from '../package.json';
 
 /** How often the seek bar moves while playing. */
 const TICK_MS = 250;
+/** How often the queue is checked for changes to keep (PRD §8.4). */
+const KEEP_QUEUE_MS = 1_000;
 
 const root = document.getElementById('app')!;
 const native = nativeBridge();
@@ -79,7 +81,7 @@ async function start(): Promise<void> {
   const settings = browserSettings();
   const saved = settings.load();
   const app = new AppController({
-    engine: new WebAudioEngine(),
+    engine: WebAudioEngine.forPage(),
     version: native?.version ?? pkg.version,
     ...(native
       ? { folders: desktopFolders(native) }
@@ -99,6 +101,7 @@ async function start(): Promise<void> {
       : browserIndexStore(),
     imageUrl: (bytes, mime) => URL.createObjectURL(new Blob([bytes], { type: mime })),
     volume: saved.volume,
+    playback: () => settings.load(),
     onVolume: (volume) => void settings.save({ ...settings.load(), volume }),
   });
   const catalog = buildCommands(app);
@@ -110,6 +113,8 @@ async function start(): Promise<void> {
   });
   listenForKeys(window, catalog, () => app.blocked());
   every(TICK_MS, () => app.player.tick());
+  every(KEEP_QUEUE_MS, () => void app.keepQueue());
+  addEventListener('pagehide', () => void app.keepQueue());
   startMediaSession(app, catalog);
   if (import.meta.env.DEV) Object.assign(globalThis, { playlark: { app, catalog } });
 

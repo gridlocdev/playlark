@@ -8,16 +8,25 @@ export const LIBRARY = fileURLToPath(new URL('../../../e2e/fixtures/basic/', imp
 
 /** An engine that "decodes" any file as a 60 s song and plays it silently. */
 export class FakeEngine implements AudioEngine {
+  onAdvance: (() => void) | null = null;
   onEnded: (() => void) | null = null;
   onBlocked: (() => void) | null = null;
   playing: DecodedSong | null = null;
+  queued: DecodedSong | null = null;
   at = 0;
   decode(): Promise<DecodedSong> {
     return Promise.resolve({ duration: 60 } as DecodedSong);
   }
-  start(song: DecodedSong, offset: number) {
+  play(song: DecodedSong, offset: number) {
     this.playing = song;
+    this.queued = null;
     this.at = offset;
+  }
+  queueNext(song: DecodedSong) {
+    if (this.playing) this.queued = song;
+  }
+  clearNext() {
+    this.queued = null;
   }
   pause() {
     return Promise.resolve();
@@ -27,6 +36,7 @@ export class FakeEngine implements AudioEngine {
   }
   stop() {
     this.playing = null;
+    this.queued = null;
   }
   position() {
     return this.at;

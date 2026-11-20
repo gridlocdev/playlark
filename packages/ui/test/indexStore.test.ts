@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { makeIndex, type Song } from '@playlark/core';
+import { makeIndex, playFrom, saveQueue, type Song } from '@playlark/core';
 import { bridgeIndexStore, memoryIndexStore, type IndexBridge } from '../src/index.ts';
 
 const picture = { mime: 'image/png', type: 3, data: new Uint8Array([1, 2]) };
@@ -22,6 +22,7 @@ describe('index stores', () => {
 
   it('goes through the desktop bridge, and serves only covers it knows', async () => {
     let text: string | null = null;
+    let queue: string | null = null;
     const calls: string[] = [];
     const bridge: IndexBridge = {
       load: () => Promise.resolve(text),
@@ -35,6 +36,11 @@ describe('index stores', () => {
       },
       pruneCovers: (keep) => {
         calls.push(`prune ${keep.length}`);
+        return Promise.resolve();
+      },
+      loadQueue: () => Promise.resolve(queue),
+      saveQueue: (t) => {
+        queue = t;
         return Promise.resolve();
       },
     };
@@ -67,5 +73,28 @@ describe('index stores', () => {
     expect(await next.coverUrl(B)).toBeNull();
     expect((await next.load('/Music'))?.songs).toHaveLength(1);
     expect(await next.coverUrl(B)).toBe(`app://playlark/cover/${B}`);
+  });
+
+  it('keeps the play queue for its folder only', async () => {
+    let queue: string | null = null;
+    const none = () => Promise.resolve();
+    const bridge: IndexBridge = {
+      load: () => Promise.resolve(null),
+      save: none,
+      saveCover: none,
+      pruneCovers: none,
+      loadQueue: () => Promise.resolve(queue),
+      saveQueue: (t) => {
+        queue = t;
+        return Promise.resolve();
+      },
+    };
+    const saved = saveQueue('/Music', playFrom(['a.mp3', 'b.mp3'], 1), 30);
+    for (const store of [memoryIndexStore(), bridgeIndexStore(bridge, String)]) {
+      expect(await store.loadQueue('/Music')).toBeNull();
+      await store.saveQueue(saved);
+      expect(await store.loadQueue('/Music')).toEqual(saved);
+      expect(await store.loadQueue('/Other')).toBeNull();
+    }
   });
 });

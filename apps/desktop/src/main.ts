@@ -233,6 +233,11 @@ function registerIpc(): void {
       return refuse();
     return index.saveCover(id, mime, data);
   });
+  ipcMain.handle(Channels.loadQueue, (e) => (trusted(e) ? index.loadQueue() : refuse()));
+  ipcMain.handle(Channels.saveQueue, (e, text: unknown) => {
+    if (!trusted(e) || typeof text !== 'string') return refuse();
+    return index.saveQueue(text);
+  });
   ipcMain.handle(Channels.pruneCovers, (e, keep: unknown) => {
     if (!trusted(e) || !Array.isArray(keep) || !keep.every((k) => typeof k === 'string')) return refuse();
     return index.pruneCovers(new Set(keep));

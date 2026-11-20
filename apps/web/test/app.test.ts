@@ -253,3 +253,69 @@ describe('moving through the song list', () => {
     expect(cursorStep('ArrowDown', -1, 0)).toBeUndefined();
   });
 });
+
+describe('the queue', () => {
+  it('Play Next and Add to Queue put songs in the queue and say so', async () => {
+    const { app } = await makeApp();
+    await app.open(await fixtureLibrary());
+    const songs = app.songs.value;
+    await app.playSongs(songs.slice(0, 3), songs[0]!.path);
+    app.playNext([songs[4]!]);
+    expect(app.notice.value?.text).toBe('Playing next: Static Bloom');
+    app.addToQueue([songs[5]!, songs[3]!]);
+    expect(app.notice.value?.text).toBe('Added 2 songs to the queue.');
+    const titles = app.player.queue.value.items.map((p) => app.byPath.value.get(p)?.title);
+    expect(titles).toEqual([
+      'Rain on Tin',
+      'Static Bloom',
+      'Morning Tide',
+      'Salt Air',
+      'Night Bus',
+      'Lantern Walk',
+    ]);
+  });
+
+  it('Delete takes the song under the queue cursor out and keeps the cursor near it', async () => {
+    const { app, catalog } = await makeApp();
+    await app.open(await fixtureLibrary());
+    const songs = app.songs.value;
+    await app.playSongs(songs.slice(0, 4), songs[0]!.path);
+    app.queueFocused.value = true;
+    app.queueCursor.value = 2;
+    await catalog.run('queue.remove');
+    const titles = app.player.queue.value.items.map((p) => app.byPath.value.get(p)?.title);
+    expect(titles).toEqual(['Rain on Tin', 'Morning Tide', 'Lantern Walk']);
+    expect(app.queueCursor.value).toBe(2);
+  });
+
+  it('keeps the queue and puts it back paused in the next run, dropping songs that are gone', async () => {
+    const index = memoryIndexStore();
+    const first = await makeApp({ index });
+    await first.app.open(await fixtureLibrary());
+    const songs = first.app.songs.value;
+    await first.app.playSongs(songs.slice(0, 3), songs[1]!.path);
+    first.engine.at = 12;
+    first.app.player.tick();
+    await first.app.keepQueue();
+
+    const second = await makeApp({ index });
+    await second.app.open(await fixtureLibrary());
+    const q = second.app.player.queue.value;
+    expect(q.items).toEqual(songs.slice(0, 3).map((s) => s.path));
+    expect(q.index).toBe(1);
+    expect(second.app.player.state.value).toBe('paused');
+    expect(second.app.player.position.value).toBe(12);
+
+    // Salt Air is deleted before the third run.
+    const full = await fixtureLibrary();
+    const files: Record<string, Uint8Array> = {};
+    for (const f of await full.list())
+      if (f.path !== songs[2]!.path) files[f.path] = new Uint8Array(await full.bytes(f.path));
+    await second.app.keepQueue();
+    const third = await makeApp({ index });
+    await third.app.open(memoryLibrary('basic', files));
+    expect(third.app.player.queue.value.items).toEqual(songs.slice(0, 2).map((s) => s.path));
+    expect(third.app.player.queue.value.index).toBe(1);
+    expect(third.app.notice.value?.text).toBe('1 song in your queue is gone and was removed.');
+  });
+});

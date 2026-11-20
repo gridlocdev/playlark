@@ -6,9 +6,10 @@ cd "$(dirname "$0")/.."
 
 LIB=e2e/fixtures/basic
 COVERS=e2e/fixtures/covers
+GAPLESS=e2e/fixtures/gapless
 CORE=packages/core/test/fixtures/audio
-rm -rf "$LIB" "$COVERS" "$CORE"
-mkdir -p "$LIB" "$COVERS" "$CORE"
+rm -rf "$LIB" "$COVERS" "$GAPLESS" "$CORE"
+mkdir -p "$LIB" "$COVERS" "$GAPLESS" "$CORE"
 
 # tone <seconds> <frequency> <sample rate> <out> [ffmpeg options…]
 tone() {
@@ -93,3 +94,21 @@ tone_cover 1 "$COVERS/Gallery/framed.mp3" "$CORE/cover.png" -c:a libmp3lame -b:a
 printf 'This is not a FLAC file.' >"$COVERS/Gallery/broken.flac"
 
 echo "Fixtures written to $LIB, $COVERS and $CORE."
+
+# ── The gapless join: one 3 s sine cut at sample 66,150 (mid-cycle), so the two halves only line up when the
+# second starts on the exact sample the first ends. The join scenario renders them back to back and compares.
+gapless_pair() {
+  local ext=$1
+  shift
+  local dir="$GAPLESS/Join $ext"
+  mkdir -p "$dir"
+  ffmpeg -hide_banner -loglevel error -y -f lavfi -i "sine=frequency=440:duration=3:sample_rate=44100" \
+    -af "atrim=end_sample=66150" -map_metadata -1 -fflags +bitexact -flags:a +bitexact "$@" \
+    -metadata title="First Half" -metadata album="Join $ext" -metadata track=1 "$dir/01 First Half.$ext"
+  ffmpeg -hide_banner -loglevel error -y -f lavfi -i "sine=frequency=440:duration=3:sample_rate=44100" \
+    -af "atrim=start_sample=66150,asetpts=PTS-STARTPTS" -map_metadata -1 -fflags +bitexact -flags:a +bitexact "$@" \
+    -metadata title="Second Half" -metadata album="Join $ext" -metadata track=2 "$dir/02 Second Half.$ext"
+}
+gapless_pair wav -c:a pcm_s16le
+gapless_pair flac -c:a flac
+gapless_pair mp3 -c:a libmp3lame -b:a 192k -id3v2_version 4

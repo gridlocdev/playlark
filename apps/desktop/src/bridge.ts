@@ -13,6 +13,8 @@ export const Channels = {
   saveIndex: 'playlark:save-index',
   saveCover: 'playlark:save-cover',
   pruneCovers: 'playlark:prune-covers',
+  loadQueue: 'playlark:load-queue',
+  saveQueue: 'playlark:save-queue',
 } as const;
 
 /** One item of the menu bar the page sends, as `NativeMenuItem` in @playlark/ui. */

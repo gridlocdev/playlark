@@ -7,6 +7,7 @@ import path from 'node:path';
 import { writeAtomic } from './atomic.ts';
 
 export const INDEX_FILE = 'library.json';
+export const QUEUE_FILE = 'queue.json';
 export const COVERS_FOLDER = 'covers';
 
 const COVER_ID = /^[0-9a-f]{64}$/;
@@ -33,6 +34,9 @@ export interface IndexFolder {
   cover(id: string): Promise<StoredCover | null>;
   /** Deletes every stored cover not in `keep`. */
   pruneCovers(keep: ReadonlySet<string>): Promise<void>;
+  /** The play queue kept between runs (PRD §8.4), or null. */
+  loadQueue(): Promise<string | null>;
+  saveQueue(text: string): Promise<void>;
 }
 
 function isMissing(e: unknown): boolean {
@@ -49,16 +53,19 @@ export function indexFolder(dir: string): IndexFolder {
       throw e;
     }
   };
+  const readText = async (name: string): Promise<string | null> => {
+    try {
+      return await readFile(path.join(dir, name), 'utf8');
+    } catch (e) {
+      if (isMissing(e)) return null;
+      throw e;
+    }
+  };
   return {
-    load: async () => {
-      try {
-        return await readFile(path.join(dir, INDEX_FILE), 'utf8');
-      } catch (e) {
-        if (isMissing(e)) return null;
-        throw e;
-      }
-    },
+    load: () => readText(INDEX_FILE),
     save: (text) => writeAtomic(path.join(dir, INDEX_FILE), text),
+    loadQueue: () => readText(QUEUE_FILE),
+    saveQueue: (text) => writeAtomic(path.join(dir, QUEUE_FILE), text),
     saveCover: async (id, mime, data) => {
       const ext = EXTENSIONS[mime];
       if (!COVER_ID.test(id) || !ext) throw new Error('That is not a cover Playlark stores.');

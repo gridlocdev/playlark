@@ -13,6 +13,17 @@ const DIALOG_COMMAND: Readonly<Partial<Record<DialogKind, string>>> = {
   shortcuts: 'help.shortcuts',
 };
 
+/** The right-click menu on songs (§14). */
+export const SONG_MENU: readonly string[] = [
+  'song.play',
+  '|',
+  'song.playNext',
+  'song.addToQueue',
+  '|',
+  'song.goToAlbum',
+  'song.goToArtist',
+];
+
 /** View ▸ Songs, Albums, Artists, Folders (§6.1). */
 const VIEWS: readonly (readonly [string, string, string, View])[] = [
   ['view.songs', 'Songs', 'mod+1', { kind: 'songs' }],
@@ -25,6 +36,11 @@ export function buildCommands(app: AppController): CommandCatalog {
   const player = app.player;
   const hasSongs = () => app.songs.value.length > 0;
   const loaded = () => player.state.value !== 'stopped';
+  const picked = () => app.cursor.value !== null;
+  const upNext = () => {
+    const q = player.queue.value;
+    return q.index >= 0 && q.index < q.items.length - 1;
+  };
   const toggleDialog = (kind: DialogKind) => () => {
     if (app.dialog.peek() === kind) app.close();
     else app.show(kind);
@@ -89,6 +105,26 @@ export function buildCommands(app: AppController): CommandCatalog {
       keysOnly: true,
       enabled: () => app.cursor.value !== null,
       run: () => app.playSelection(),
+    },
+    {
+      id: 'song.playNext',
+      title: 'Play Next',
+      description: 'Play the selected songs after the song playing.',
+      group: 'Song',
+      keywords: 'queue after up next',
+      context: true,
+      enabled: picked,
+      run: () => app.playNext(app.selectedSongs()),
+    },
+    {
+      id: 'song.addToQueue',
+      title: 'Add to Queue',
+      description: 'Add the selected songs to the end of the queue.',
+      group: 'Song',
+      keywords: 'queue later end append',
+      context: true,
+      enabled: picked,
+      run: () => app.addToQueue(app.selectedSongs()),
     },
     {
       id: 'song.goToAlbum',
@@ -194,6 +230,46 @@ export function buildCommands(app: AppController): CommandCatalog {
       keywords: 'quieter softer sound',
       enabled: () => player.volume.value > 0,
       run: () => player.setVolume(player.volume.peek() - VOLUME_STEP),
+    },
+    {
+      id: 'controls.shuffle',
+      title: 'Shuffle',
+      description: 'Play the songs after this one in a random order, or put the order back.',
+      group: 'Controls',
+      shortcuts: ['mod+s'],
+      keywords: 'random mix order',
+      checked: () => player.shuffle.value,
+      run: () => player.toggleShuffle(),
+    },
+    {
+      id: 'controls.repeat',
+      title: 'Repeat',
+      description: 'Go from Repeat Off to Repeat All (the whole queue) to Repeat One (this song).',
+      group: 'Controls',
+      shortcuts: ['mod+alt+r'],
+      keywords: 'loop again one all',
+      checked: () => player.repeat.value !== 'off',
+      run: () => player.cycleRepeat(),
+    },
+    {
+      id: 'queue.remove',
+      title: 'Remove from Queue',
+      description: 'Take the selected song out of Up Next.',
+      group: 'Controls',
+      shortcuts: ['backspace', 'delete'],
+      keysOnly: true,
+      keywords: 'delete up next',
+      enabled: () => app.queueFocused.value && app.queueCursor.value !== null,
+      run: () => app.removeFromQueue(),
+    },
+    {
+      id: 'queue.clear',
+      title: 'Clear Up Next',
+      description: 'Take every song after the one playing out of the queue.',
+      group: 'Controls',
+      keywords: 'empty queue remove all',
+      enabled: upNext,
+      run: () => player.clearUpNext(),
     },
     ...VIEWS.map(([id, title, key, view]): CommandSpec => ({
       id,

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'preact/hooks';
-import { fold, type Album, type Artist, type CoverRef, type Folder } from '@playlark/core';
+import { fold, type Album, type Artist, type CoverRef, type Folder, type Song } from '@playlark/core';
 import { formatCount, formatTime, Icon, useVirtualRows, type CommandCatalog } from '@playlark/ui';
 import type { AppController } from './controller.ts';
 import { SongList } from './SongList.tsx';
@@ -132,11 +132,35 @@ export function Cover({
   );
 }
 
-function PlayButton({ onPlay, label }: { readonly onPlay: () => void; readonly label: string }) {
+/** A page's Play and Shuffle buttons (§8.2). `songs` is read on the click, so it's the page's songs then. */
+function PlayButtons({
+  app,
+  name,
+  songs,
+}: {
+  readonly app: AppController;
+  readonly name: string;
+  readonly songs: () => readonly Song[];
+}) {
   return (
-    <button type="button" class="pl-button pl-button-primary" aria-label={label} onClick={onPlay}>
-      <Icon name="play" /> Play
-    </button>
+    <>
+      <button
+        type="button"
+        class="pl-button pl-button-primary"
+        aria-label={`Play ${name}`}
+        onClick={() => void app.playSongs(songs())}
+      >
+        <Icon name="play" /> Play
+      </button>
+      <button
+        type="button"
+        class="pl-button"
+        aria-label={`Shuffle ${name}`}
+        onClick={() => void app.shuffleSongs(songs())}
+      >
+        <Icon name="shuffle" /> Shuffle
+      </button>
+    </>
   );
 }
 
@@ -248,7 +272,7 @@ function AlbumPage({ app, album }: { readonly app: AppController; readonly album
           )}
           <p class="pl-page-facts">{facts.join(' · ')}</p>
           <div class="pl-page-actions">
-            <PlayButton label={`Play ${album.title}`} onPlay={() => void app.playSongs(album.songs)} />
+            <PlayButtons app={app} name={album.title} songs={() => album.songs} />
           </div>
         </div>
       </header>
@@ -270,7 +294,7 @@ function ArtistPage({ app, artist }: { readonly app: AppController; readonly art
           <h2>{artist.name}</h2>
           <p class="pl-page-facts">{albumCount(artist.albums.length)}</p>
           <div class="pl-page-actions">
-            <PlayButton label={`Play ${artist.name}`} onPlay={() => void app.playSongs(app.rows.peek())} />
+            <PlayButtons app={app} name={artist.name} songs={() => app.rows.peek()} />
           </div>
         </div>
       </header>
@@ -341,10 +365,9 @@ function FolderPage({ app, folder }: { readonly app: AppController; readonly fol
             </span>
           ))}
         </nav>
-        <PlayButton
-          label={`Play ${folder.name || top}`}
-          onPlay={() => void app.playSongs(app.folderSongs(folder.path))}
-        />
+        <div class="pl-page-actions">
+          <PlayButtons app={app} name={folder.name || top} songs={() => app.folderSongs(folder.path)} />
+        </div>
       </header>
       {folder.folders.length > 0 && (
         <ul class="pl-folders" aria-label="Folders">
