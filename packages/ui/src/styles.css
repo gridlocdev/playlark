@@ -1,0 +1,480 @@
+/*
+ * Playlark: theme tokens and the shared component styles (PRD §5.3). Light by default; [data-theme] or the
+ * system picks dark; [data-accent] picks the accent. The chrome is layered greys and the grid is the
+ * lightest surface, so colour comes only from calendars and the one accent.
+ */
+:root {
+  --pl-window: #f3f3f4;
+  --pl-sidebar: #f7f7f8;
+  --pl-grid: #ffffff;
+  --pl-raised: #ffffff;
+  --pl-weekend: #fafafa;
+  --pl-outside: #f6f6f7;
+  --pl-hover: rgba(0, 0, 0, 0.05);
+  --pl-pressed: rgba(0, 0, 0, 0.09);
+  --pl-line: #e7e7e9;
+  --pl-line-soft: #f1f1f3;
+  --pl-line-strong: #d0d0d4;
+  --pl-text: #1d1d1f;
+  --pl-text-2: #5f6068;
+  --pl-text-3: #8e8f97;
+  --pl-accent: var(--pl-accent-light);
+  --pl-accent-soft: color-mix(in srgb, var(--pl-accent) 14%, transparent);
+  --pl-accent-text: #ffffff;
+  --pl-now: #e5484d;
+  --pl-danger: #d13438;
+  --pl-shadow: 0 12px 36px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --pl-backdrop: rgba(0, 0, 0, 0.28);
+  color-scheme: light;
+  --pl-radius: 6px;
+  --pl-toolbar: 52px;
+  --pl-title-size: 20px;
+  --pl-status: 24px;
+  --pl-sidebar-width: 240px;
+  --pl-hour: 48px;
+  --pl-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+:root,
+:root[data-accent='blue'] {
+  --pl-accent-light: #1f6fe5;
+  --pl-accent-dark: #4c8dff;
+}
+:root[data-accent='red'] {
+  --pl-accent-light: #d93f3f;
+  --pl-accent-dark: #ff6b6b;
+}
+:root[data-accent='orange'] {
+  --pl-accent-light: #c95a06;
+  --pl-accent-dark: #ff9440;
+}
+:root[data-accent='green'] {
+  --pl-accent-light: #1f8a4c;
+  --pl-accent-dark: #3fc77a;
+}
+:root[data-accent='teal'] {
+  --pl-accent-light: #0f8278;
+  --pl-accent-dark: #34c2b3;
+}
+:root[data-accent='purple'] {
+  --pl-accent-light: #7c45c4;
+  --pl-accent-dark: #b07dff;
+}
+:root[data-accent='pink'] {
+  --pl-accent-light: #c4378f;
+  --pl-accent-dark: #f272bd;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --pl-window: #232325;
+    --pl-sidebar: #1f1f21;
+    --pl-grid: #1a1a1b;
+    --pl-raised: #2b2b2e;
+    --pl-weekend: #1d1d1f;
+    --pl-outside: #1d1d1f;
+    --pl-hover: rgba(255, 255, 255, 0.06);
+    --pl-pressed: rgba(255, 255, 255, 0.1);
+    --pl-line: #303033;
+    --pl-line-soft: #262628;
+    --pl-line-strong: #46464a;
+    --pl-text: #ececee;
+    --pl-text-2: #a8a8b0;
+    --pl-text-3: #7c7c85;
+    --pl-accent: var(--pl-accent-dark);
+    --pl-accent-soft: color-mix(in srgb, var(--pl-accent) 24%, transparent);
+    --pl-accent-text: #ffffff;
+    --pl-now: #ff6369;
+    --pl-danger: #ff6b6b;
+    --pl-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
+    --pl-backdrop: rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --pl-window: #232325;
+  --pl-sidebar: #1f1f21;
+  --pl-grid: #1a1a1b;
+  --pl-raised: #2b2b2e;
+  --pl-weekend: #1d1d1f;
+  --pl-outside: #1d1d1f;
+  --pl-hover: rgba(255, 255, 255, 0.06);
+  --pl-pressed: rgba(255, 255, 255, 0.1);
+  --pl-line: #303033;
+  --pl-line-soft: #262628;
+  --pl-line-strong: #46464a;
+  --pl-text: #ececee;
+  --pl-text-2: #a8a8b0;
+  --pl-text-3: #7c7c85;
+  --pl-accent: var(--pl-accent-dark);
+  --pl-accent-soft: color-mix(in srgb, var(--pl-accent) 24%, transparent);
+  --pl-accent-text: #ffffff;
+  --pl-now: #ff6369;
+  --pl-danger: #ff6b6b;
+  --pl-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --pl-backdrop: rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    /* None at all: a 0.01 ms transition still turns every style change into an animation, which a paused clock
+       never finishes. */
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font: 13px/1.4 var(--pl-font);
+  color: var(--pl-text);
+  background: var(--pl-window);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--pl-accent);
+  outline-offset: 1px;
+}
+kbd {
+  display: inline-block;
+  min-width: 1.7em;
+  padding: 0 5px;
+  border: 1px solid var(--pl-line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 11px/1.6 var(--pl-font);
+  text-align: center;
+  color: var(--pl-text-2);
+  background: var(--pl-raised);
+}
+.pl-icon {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.pl-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.pl-visually-hidden,
+.pl-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Buttons */
+.pl-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pl-radius);
+  background: none;
+  color: var(--pl-text-2);
+  cursor: pointer;
+}
+.pl-icon-button:hover {
+  background: var(--pl-hover);
+  color: var(--pl-text);
+}
+.pl-icon-button:active {
+  background: var(--pl-pressed);
+}
+.pl-icon-button.pl-small {
+  width: 20px;
+  height: 20px;
+}
+.pl-icon-button.pl-small .pl-icon {
+  width: 13px;
+  height: 13px;
+}
+.pl-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--pl-line-strong);
+  border-radius: var(--pl-radius);
+  background: var(--pl-raised);
+  cursor: pointer;
+  font-weight: 500;
+}
+.pl-button:hover {
+  background: color-mix(in srgb, var(--pl-raised) 92%, var(--pl-text));
+}
+.pl-button-primary {
+  border-color: var(--pl-accent);
+  background: var(--pl-accent);
+  color: var(--pl-accent-text);
+}
+.pl-button-primary:hover {
+  background: color-mix(in srgb, var(--pl-accent) 88%, #000);
+}
+.pl-button-danger {
+  border-color: var(--pl-danger);
+  background: var(--pl-danger);
+  color: #fff;
+}
+.pl-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pl-accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+.pl-link-button:hover {
+  text-decoration: underline;
+}
+
+/* Segmented control (the view switcher, Settings choices) */
+.pl-segmented {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 7px;
+  background: var(--pl-pressed);
+}
+.pl-segmented button {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--pl-text-2);
+  font-weight: 500;
+  cursor: pointer;
+}
+.pl-segmented button:hover {
+  color: var(--pl-text);
+}
+.pl-segmented button[aria-pressed='true'],
+.pl-segmented button[aria-checked='true'] {
+  background: var(--pl-raised);
+  color: var(--pl-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Dialogs */
+.pl-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--pl-backdrop);
+}
+.pl-backdrop-top {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+.pl-dialog:focus {
+  outline: none;
+}
+.pl-dialog {
+  width: 440px;
+  max-width: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  background: var(--pl-raised);
+  box-shadow: var(--pl-shadow);
+}
+.pl-dialog-wide {
+  width: 660px;
+}
+.pl-dialog form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.pl-dialog h2 {
+  margin: 0;
+  padding: 18px 20px 4px;
+  font-size: 15px;
+  font-weight: 650;
+}
+.pl-dialog-body {
+  padding: 10px 20px;
+  overflow-y: auto;
+}
+.pl-dialog-body p {
+  margin: 0 0 10px;
+}
+.pl-choices {
+  margin: 0;
+  padding-left: 18px;
+}
+.pl-choices li {
+  margin-bottom: 6px;
+}
+.pl-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 18px;
+}
+.pl-field {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.pl-field > span {
+  color: var(--pl-text-2);
+  text-align: right;
+}
+.pl-field select,
+.pl-field input:not([type='checkbox']) {
+  justify-self: start;
+  min-width: 160px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--pl-line-strong);
+  border-radius: var(--pl-radius);
+  background: var(--pl-grid);
+}
+.pl-field input[type='checkbox'] {
+  justify-self: start;
+  margin: 0;
+}
+.pl-swatches {
+  display: flex;
+  gap: 6px;
+}
+.pl-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pl-swatch);
+  cursor: pointer;
+}
+.pl-swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--pl-raised),
+    0 0 0 4px var(--pl-swatch);
+}
+
+/* Command menu */
+.pl-palette {
+  width: 560px;
+  overflow: hidden;
+}
+.pl-palette input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--pl-line);
+  background: none;
+  font-size: 15px;
+  outline: none;
+}
+.pl-palette ul {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.pl-palette li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.pl-palette li[aria-selected='true'] {
+  background: var(--pl-accent-soft);
+}
+.pl-palette li.pl-disabled {
+  opacity: 0.45;
+}
+.pl-palette-title {
+  flex: 1;
+}
+.pl-palette-group {
+  color: var(--pl-text-3);
+  font-size: 12px;
+}
+.pl-palette-empty {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--pl-text-2);
+}
+
+/* Keyboard Shortcuts */
+.pl-shortcuts {
+  columns: 2 260px;
+  column-gap: 28px;
+}
+.pl-shortcuts section {
+  break-inside: avoid;
+  margin-bottom: 16px;
+}
+.pl-shortcuts h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--pl-text-2);
+}
+.pl-shortcuts dl {
+  margin: 0;
+}
+.pl-shortcut {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+}
+.pl-shortcut dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.pl-way {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.pl-or {
+  color: var(--pl-text-3);
+  font-size: 11px;
+  margin-right: 2px;
+}

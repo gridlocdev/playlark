@@ -1,0 +1,7 @@
+# Audio fixtures are binary.
+*.mp3 binary
+*.flac binary
+*.m4a binary
+*.ogg binary
+*.opus binary
+*.wav binary

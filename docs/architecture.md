@@ -1,0 +1,86 @@
+# Architecture
+
+Playlark is one TypeScript code base that runs in three places: the browser, the NAS server's client and the Electron app. All three run the same UI. The only difference between them is where the songs come from.
+
+```
+     ┌───────────────── apps/web (Vite, Preact) ─────────────────┐
+     │  App · SongsTable · NowPlaying · QueuePanel · StatusBar   │
+     │  AppController (folder, songs, scan, cursor, notices)     │
+     │  commands.ts · nativeMenu.ts · mediaSession.ts            │
+     └─────────────────────────────┬─────────────────────────────┘
+                                   │ imports
+     ┌──────────────── packages/ui (Preact + signals) ───────────────┐
+     │  CommandCatalog · shortcuts · Dialog · ListPopup · PopupMenu  │
+     │  Player (queue, state, position) ── AudioEngine               │
+     │                                     └─ WebAudioEngine         │
+     │  LibrarySource ─┬─ memoryLibrary        (tests, demo)         │
+     │                 ├─ browserFolderLibrary (a folder the browser │
+     │                 │                        was given)           │
+     │                 ├─ serverLibrary        (NAS: /api)           │
+     │                 └─ urlLibrary           (desktop: app://)     │
+     │  settings (localStorage)                                      │
+     └─────────────────────────────┬─────────────────────────────────┘
+                                   │
+     ┌──────────────── packages/core (pure TS) ─────────────────┐
+     │  tags: ID3v1/v2, MP3 stream, FLAC, MP4, Ogg, WAV          │
+     │  library: files, songs, sort, scanLibrary                 │
+     │  queue                                                    │
+     └──────────────────────────────────────────────────────────┘
+
+ packages/node-files  Node only: folder listings confined to the folder, media replies with Range, atomic writes
+ apps/server          node:http, GET and HEAD only: the static client + /api/{info,files,media}
+ apps/desktop         Electron main + sandboxed preload; loads the apps/web build from app://playlark/
+```
+
+## Layering
+
+- `@playlark/core` uses no DOM or Node APIs and imports no UI library. ESLint enforces this, so the code runs in a browser, in a worker and in Node.
+- `@playlark/ui` holds everything that touches the page: signals, Web Audio, `fetch`, `localStorage`, and the shared components.
+- The apps are thin. Each app picks a library source, puts the UI on the page, and connects the parts that are native to its host.
+- Each package's `src/index.ts` names what the package exports, with no `export *`. Its `package.json` `exports` field allows only that file. Tests import through it too.
+- The architecture test (`test/architecture.test.ts`) enforces these rules. It also keeps `fetch` in `packages/ui/src/library/sources.ts` and `localStorage` in `packages/ui/src/settings.ts`.
+
+## Core (`packages/core`)
+
+- **Tags (§4).** `readTags` takes the format from the file's extension and first bytes. It reads the tags and the stream facts through a `ByteSource`, which reads ranges of bytes, so a song on the NAS is never downloaded whole. The readers are:
+  - MP3 uses ID3v2 and then ID3v1. It finds the duration and the encoder delay from the Xing, Info, LAME or VBRI header.
+  - FLAC uses `STREAMINFO` and its Vorbis comments.
+  - M4A uses `ilst` atoms and the `mdhd` duration.
+  - Ogg uses Vorbis or Opus comments, and the last granule position.
+  - WAV uses `fmt `, `LIST INFO` and `id3 `.
+- **Songs (§4.4).** `songFrom` fills in what the tags leave out: the title from the file name, Unknown Artist and Unknown Album. A file that can't be read becomes an unreadable song with its error. It isn't dropped.
+- **Scans (§3).** `scanLibrary` reads a few files at a time and reports its progress. It reuses each song whose size and modified time haven't changed.
+- **Sorting (§5).** The sort is natural and ignores case and a leading "The ".
+- **The queue (§6).** The queue is immutable. It has `playFrom`, `next`, `previous` (Previous restarts the song after 3 s) and `prune`.
+
+## UI (`packages/ui`)
+
+- **`Player`** holds the queue, the play state (`stopped`, `loading`, `playing`, `paused`), the position, the duration and the volume, as signals. It reads song bytes through the library source and hands them to an `AudioEngine`. After `MAX_FAILURES` songs in a row fail, it stops. If the browser keeps the sound off until the user acts, the player pauses and says so.
+- **`WebAudioEngine`** decodes songs and plays them through a gain node.
+- **Library sources** list the music files and give each one a `ByteSource` and a URL to play from.
+- **Commands.**
+  - `CommandCatalog` holds every command, with its shortcuts, its group and its enabled check.
+  - Shortcuts use `mod`, which is ⌘ on a Mac and Ctrl elsewhere. Key names are canonical, such as `right` and `esc`.
+  - The catalog feeds the keys, ⌘K, the native menu and the Keyboard Shortcuts window. `test/controls.test.ts` keeps `docs/controls.md` in step with it.
+
+## Web app (`apps/web`)
+
+- **`AppController`** holds the window's state as signals: the open folder and its songs, the scan, the cursor in the song list, the open dialog and the status-bar notice. Components read the signals, and commands call the controller's methods.
+- `main.tsx` picks the library source:
+  - the desktop bridge when the app runs in Electron;
+  - the server's `/api` when the server answers;
+  - otherwise a folder the user picks.
+- `mediaSession.ts` connects the system media keys and the Now Playing info.
+
+## Server (`apps/server`)
+
+- The server answers `GET` and `HEAD` only. Any other method gets 405.
+- `/api/info` gives the folder's name. `/api/files` gives the music files with their sizes and modified times. `/api/media/<path>` gives a song's bytes, and supports `Range`.
+- Every path is resolved inside the music folder, symlinks included. A path that leads outside the folder gets 403.
+- A request whose `Host` header isn't allowed gets 421. The server has no sign-in, so it listens on loopback unless it is started with `--no-auth`.
+
+## Desktop (`apps/desktop`)
+
+- `crashGuard.ts` is registered first in the main process. An uncaught error or an unhandled rejection is logged, and the app exits with an error. Electron never shows it in a dialog.
+- The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder.
+- With `--headless`, the app runs with no window, no Dock icon and no sound, on a throwaway profile. It skips native dialogs and records each one in `globalThis.playlarkHeadless`.

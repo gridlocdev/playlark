@@ -1,0 +1,35 @@
+appId: dev.gridloc.playlark
+productName: Playlark
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  # The window icon on Linux and Windows (macOS takes the bundle's icon.icns).
+  - build/icon.png
+asar: true
+# Opening an .ics file from the Finder or the Explorer offers to import it (PRD §14).
+fileAssociations:
+  - ext: ics
+    name: iCalendar file
+    mimeType: text/calendar
+    role: Viewer
+# One naming scheme on every system: Playlark-1.0.0-mac-arm64.dmg, Playlark-1.0.0-win-x64.exe, …
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+mac:
+  icon: build/icon.icns
+  category: public.app-category.productivity
+  target: [dmg, zip]
+  hardenedRuntime: true
+  # Ad-hoc signature, so Apple silicon will run a local build. Swap for a Developer ID to distribute.
+  identity: '-'
+linux:
+  icon: build/icon.png
+  target: [AppImage]
+  # The package name (@playlark/desktop) isn't a usable file name.
+  executableName: playlark
+  category: Office
+win:
+  icon: build/icon.ico
+  target: [nsis]

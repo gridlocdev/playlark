@@ -1,0 +1,23 @@
+{
+  "name": "@playlark/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Serves the Playlark web client and one music folder, for a NAS.",
+  "scripts": {
+    "start": "node src/main.ts",
+    "dev": "PLAYLARK_MUSIC=../../e2e/fixtures/basic PLAYLARK_STATIC=../web/dist node --watch src/main.ts",
+    "build": "echo 'server runs from source (node type stripping)'"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "playlark-server": "./bin/playlark-server.mjs"
+  },
+  "dependencies": {
+    "@playlark/node-files": "workspace:*",
+    "@playlark/core": "workspace:*"
+  }
+}
