@@ -10,3 +10,4 @@ export {
   parseRange,
   resolveInside,
 } from './musicFolder.ts';
+export { COVERS_FOLDER, INDEX_FILE, indexFolder, type IndexFolder, type StoredCover } from './indexFolder.ts';

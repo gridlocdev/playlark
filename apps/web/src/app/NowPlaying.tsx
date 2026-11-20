@@ -35,7 +35,7 @@ export function NowPlaying({
     <section class="pl-now" aria-label="Now playing">
       <div class="pl-now-song">
         <div class="pl-now-cover" aria-hidden="true">
-          <Icon name="music" />
+          {app.nowCover.value ? <img src={app.nowCover.value} alt="" /> : <Icon name="music" />}
         </div>
         <div class="pl-now-text">
           <div class="pl-now-title">{state === 'loading' ? 'Loading…' : (song?.title ?? 'Not playing')}</div>

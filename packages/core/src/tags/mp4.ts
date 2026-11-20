@@ -11,7 +11,17 @@ import {
   u64be,
 } from '../bytes.ts';
 import { genreName } from './genres.ts';
-import { type Codec, type StreamInfo, type Tags, parseYear, setText } from './types.ts';
+import { pictureMime } from './picture.ts';
+import {
+  type Codec,
+  type Picture,
+  type ReplayGain,
+  type StreamInfo,
+  type Tags,
+  parseYear,
+  replayGainFrom,
+  setText,
+} from './types.ts';
 
 /** `moov` with cover art can run to a few megabytes; anything past this is not a music file's. */
 const MAX_MOOV = 64 * 1024 * 1024;
@@ -136,8 +146,11 @@ function parseSmpb(value: string): { delay: number; padding: number; samples: nu
   return { delay, padding, samples };
 }
 
-function ilstTags(b: Uint8Array, ilst: Atom, stream: StreamInfo): Tags {
+/** The `ilst` atom's tags, and its first `covr` picture. */
+function ilstTags(b: Uint8Array, ilst: Atom, stream: StreamInfo): { tags: Tags; cover?: Picture } {
   const tags: Tags = {};
+  let cover: Picture | undefined;
+  const gains = new Map<string, string>();
   for (const item of atoms(b, ilst.start, ilst.end)) {
     const d = dataOf(b, item);
     switch (item.type) {
@@ -156,6 +169,27 @@ function ilstTags(b: Uint8Array, ilst: Atom, stream: StreamInfo): Tags {
       case '©gen':
         setText(tags, 'genre', text(d));
         break;
+      case 'soar':
+        setText(tags, 'artistSort', text(d));
+        break;
+      case 'soaa':
+        setText(tags, 'albumArtistSort', text(d));
+        break;
+      case 'soal':
+        setText(tags, 'albumSort', text(d));
+        break;
+      case 'sonm':
+        setText(tags, 'titleSort', text(d));
+        break;
+      case 'covr': {
+        // Type 13 is JPEG, 14 PNG; the bytes decide in the end.
+        if (!cover && d && d.value.length > 0) {
+          const declared = d.type === 14 ? 'image/png' : d.type === 13 ? 'image/jpeg' : '';
+          const data = d.value.slice();
+          cover = { mime: pictureMime(data, declared), type: 3, data };
+        }
+        break;
+      }
       case 'gnre': {
         const n = int(d);
         if (n !== undefined && !tags.genre) {
@@ -186,7 +220,9 @@ function ilstTags(b: Uint8Array, ilst: Atom, stream: StreamInfo): Tags {
       case '----': {
         const name = child(b, item, 'name');
         const key = name ? decodeUtf8(b.subarray(name.start + 4, name.end)) : '';
-        if (key === 'iTunSMPB') {
+        if (key.toLowerCase().startsWith('replaygain_'))
+          gains.set(key.slice(11).toUpperCase(), text(d) ?? '');
+        else if (key === 'iTunSMPB') {
           const smpb = parseSmpb(text(d) ?? '');
           if (smpb) {
             stream.encoderDelay = smpb.delay;
@@ -198,7 +234,9 @@ function ilstTags(b: Uint8Array, ilst: Atom, stream: StreamInfo): Tags {
       }
     }
   }
-  return tags;
+  const replayGain: ReplayGain | undefined = replayGainFrom((key) => gains.get(key));
+  if (replayGain) tags.replayGain = replayGain;
+  return { tags, ...(cover ? { cover } : {}) };
 }
 
 /** `meta` is a full box in MP4 files (4 bytes of version and flags) but not in QuickTime ones. */
@@ -207,7 +245,9 @@ function ilstIn(b: Uint8Array, meta: Atom): Atom | undefined {
   return child(b, meta, 'ilst', skip);
 }
 
-export async function readMp4(source: ByteSource): Promise<{ tags: Tags; stream: StreamInfo }> {
+export async function readMp4(
+  source: ByteSource,
+): Promise<{ tags: Tags; stream: StreamInfo; cover?: Picture }> {
   let at = 0;
   let moov: Uint8Array | undefined;
   let mdatBytes = 0;
@@ -242,7 +282,7 @@ export async function readMp4(source: ByteSource): Promise<{ tags: Tags; stream:
   }
   const meta = path(moov, root, 'udta', 'meta') ?? child(moov, root, 'meta');
   const ilst = meta ? ilstIn(moov, meta) : undefined;
-  const tags = ilst ? ilstTags(moov, ilst, stream) : {};
+  const read = ilst ? ilstTags(moov, ilst, stream) : { tags: {} };
   if (stream.duration > 0 && mdatBytes > 0) stream.bitrate = Math.round((mdatBytes * 8) / stream.duration);
-  return { tags, stream };
+  return { ...read, stream };
 }

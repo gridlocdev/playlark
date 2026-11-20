@@ -2,7 +2,15 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { loadFolderChoice, mediaPath, mediaResponse, saveFolderChoice, startFolder } from '../src/index.ts';
+import { indexFolder } from '@playlark/node-files';
+import {
+  coverResponse,
+  loadFolderChoice,
+  mediaPath,
+  mediaResponse,
+  saveFolderChoice,
+  startFolder,
+} from '../src/index.ts';
 
 let root: string;
 
@@ -13,6 +21,19 @@ beforeAll(async () => {
 });
 
 afterAll(() => rm(root, { recursive: true, force: true }));
+
+describe('app://playlark/cover/', () => {
+  it('serves a stored cover by its id, and nothing else', async () => {
+    const index = indexFolder(path.join(root, 'data'));
+    const id = 'c'.repeat(64);
+    await index.saveCover(id, 'image/png', new Uint8Array([7, 8]));
+    const ok = await coverResponse(index, `/cover/${id}`);
+    expect(ok.headers.get('content-type')).toBe('image/png');
+    expect(new Uint8Array(await ok.arrayBuffer())).toEqual(new Uint8Array([7, 8]));
+    expect((await coverResponse(index, '/cover/..%2Flibrary.json')).status).toBe(404);
+    expect((await coverResponse(index, `/cover/${'d'.repeat(64)}`)).status).toBe(404);
+  });
+});
 
 describe('app://playlark/media/', () => {
   it('decodes each part of the path', () => {

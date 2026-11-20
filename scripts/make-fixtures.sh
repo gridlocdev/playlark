@@ -5,9 +5,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 LIB=e2e/fixtures/basic
+COVERS=e2e/fixtures/covers
 CORE=packages/core/test/fixtures/audio
-rm -rf "$LIB" "$CORE"
-mkdir -p "$LIB" "$CORE"
+rm -rf "$LIB" "$COVERS" "$CORE"
+mkdir -p "$LIB" "$COVERS" "$CORE"
 
 # tone <seconds> <frequency> <sample rate> <out> [ffmpeg options…]
 tone() {
@@ -18,6 +19,19 @@ tone() {
     -map_metadata -1 -fflags +bitexact -flags:a +bitexact "$@" "$out"
 }
 
+# tone_cover <seconds> <out> <image> [ffmpeg options…]: a tone with the image attached as its front cover.
+tone_cover() {
+  local seconds=$1 out=$2 image=$3
+  shift 3
+  ffmpeg -hide_banner -loglevel error -y -f lavfi -i "sine=frequency=440:duration=$seconds:sample_rate=44100" \
+    -i "$image" -map 0:a -map 1:v -c:v copy -disposition:v attached_pic -metadata:s:v comment="Cover (front)" \
+    -map_metadata -1 -fflags +bitexact -flags:a +bitexact "$@" "$out"
+}
+
+# image <colour> <out>: an 8×8 picture in one colour.
+image() {
+  ffmpeg -hide_banner -loglevel error -y -f lavfi -i "color=c=$1:s=8x8" -frames:v 1 "$2"
+}
 
 # ── The fixture library the browser and desktop checks open ──────────────────────────────────────────
 NW="$LIB/Northwind Quartet/Harbour Lights"
@@ -43,6 +57,7 @@ tone 2 330 22050 "$LIB/Field Recordings/rain-on-tin.wav" -c:a pcm_s16le \
   -metadata title="Rain on Tin" -metadata artist="Field Recordings"
 tone 2 392 44100 "$LIB/Loose/untagged.mp3" -c:a libmp3lame -b:a 64k -write_id3v2 0
 printf 'Not music.\n' > "$LIB/notes.txt"
+image teal "$PK/cover.jpg"
 tone 1 300 44100 "$LIB/.hidden/secret.mp3" -c:a libmp3lame -b:a 64k
 
 # ── Format edge cases for the tag reader tests ──────────────────────────────────────────────────────
@@ -58,4 +73,23 @@ tone 1 440 44100 "$CORE/wav-id3.wav" -c:a pcm_s16le -write_id3v2 1 -metadata tit
 tone 1 440 48000 "$CORE/stereo.opus" -c:a libopus -b:a 32k -ac 2 -metadata title="Opus Stereo" \
   -metadata ARTIST="First" -metadata album="Two Artists"
 
-echo "Fixtures written to $LIB and $CORE."
+# Covers, sort names and ReplayGain in each format that carries them.
+image orange "$CORE/cover.png"
+tone_cover 1 "$CORE/apic.mp3" "$CORE/cover.png" -c:a libmp3lame -b:a 64k -id3v2_version 4 \
+  -metadata title="With Cover" -metadata artist="The Sorters" -metadata artist-sort="Sorters, The" \
+  -metadata album-sort="Album Sort" -metadata title-sort="Cover, With" \
+  -metadata REPLAYGAIN_TRACK_GAIN="-6.54 dB" -metadata REPLAYGAIN_TRACK_PEAK="0.988525" \
+  -metadata REPLAYGAIN_ALBUM_GAIN="-5.20 dB"
+tone_cover 1 "$CORE/picture.flac" "$CORE/cover.png" -c:a flac \
+  -metadata title="FLAC Cover" -metadata ARTISTSORT="Sorters, The" -metadata ALBUMARTISTSORT="Band, A" \
+  -metadata REPLAYGAIN_TRACK_GAIN="+1.25 dB" -metadata REPLAYGAIN_ALBUM_PEAK="0.5"
+tone_cover 1 "$CORE/covr.m4a" "$CORE/cover.png" -c:a aac -b:a 64k \
+  -metadata title="M4A Cover" -metadata artist="M4A Artist"
+
+# ── A second library: a song with its own cover, and a file that can't be read ──────────────────────
+mkdir -p "$COVERS/Gallery"
+tone_cover 1 "$COVERS/Gallery/framed.mp3" "$CORE/cover.png" -c:a libmp3lame -b:a 64k -id3v2_version 4 \
+  -metadata title="Framed" -metadata artist="The Painters" -metadata album="Gallery"
+printf 'This is not a FLAC file.' >"$COVERS/Gallery/broken.flac"
+
+echo "Fixtures written to $LIB, $COVERS and $CORE."

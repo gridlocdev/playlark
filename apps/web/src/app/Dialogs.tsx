@@ -10,6 +10,8 @@ export function Dialogs({ app, catalog }: { readonly app: AppController; readonl
       return <CommandMenu app={app} catalog={catalog} />;
     case 'shortcuts':
       return <ShortcutsDialog app={app} catalog={catalog} />;
+    case 'unreadable':
+      return <UnreadableDialog app={app} />;
     case null:
       return null;
   }
@@ -125,6 +127,36 @@ function ShortcutsDialog({
           </section>
         ))}
       </div>
+    </Dialog>
+  );
+}
+
+/** The files the last scan couldn't read, each with the reason (PRD §3.3). */
+function UnreadableDialog({ app }: { readonly app: AppController }) {
+  const files = app.songs.value.filter((s) => s.error);
+  return (
+    <Dialog
+      title="Files That Couldn’t Be Read"
+      class="pl-dialog-wide"
+      onClose={() => app.close()}
+      actions={
+        <button type="button" class="pl-button pl-button-primary" onClick={() => app.close()}>
+          Close
+        </button>
+      }
+    >
+      {files.length === 0 ? (
+        <p>Every file was read.</p>
+      ) : (
+        <dl class="pl-unreadable-list">
+          {files.map((s) => (
+            <div key={s.path}>
+              <dt>{s.path}</dt>
+              <dd>{s.error}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
     </Dialog>
   );
 }

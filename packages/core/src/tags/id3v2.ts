@@ -11,7 +11,8 @@ import {
   u32be,
 } from '../bytes.ts';
 import { id3Genre } from './genres.ts';
-import { type Tags, parseFlag, parseYear, setPair, setText } from './types.ts';
+import { pictureMime } from './picture.ts';
+import { type Picture, type Tags, parseFlag, parseYear, replayGainFrom, setPair, setText } from './types.ts';
 
 const HEADER = 10;
 /** ID3v2.2's three-letter frame ids, as their 2.3/2.4 names. */
@@ -37,6 +38,8 @@ export interface Id3v2 {
   readonly version: 2 | 3 | 4;
   /** Text frames by id (`TIT2`); `TXXX` frames by `TXXX:<DESCRIPTION>` in upper case. */
   readonly text: ReadonlyMap<string, string>;
+  /** `APIC` (and 2.2's `PIC`) frames, in tag order. */
+  readonly pictures: readonly Picture[];
 }
 
 /** The whole tag's length (header, frames, padding and footer) from its first 10 bytes, or null if none. */
@@ -120,6 +123,39 @@ function textValues(body: Uint8Array): string[] {
   return values;
 }
 
+/** Where an encoded string that ends with a terminator stops: the index of the terminator, or -1. */
+function terminator(encoding: number, b: Uint8Array, from: number): number {
+  if (encoding === 1 || encoding === 2) {
+    for (let i = from; i + 1 < b.length; i += 2) if (b[i] === 0 && b[i + 1] === 0) return i;
+    return -1;
+  }
+  return b.indexOf(0, from);
+}
+
+/** An `APIC` frame body (or `PIC` in 2.2, with a three-letter format in place of the MIME type). */
+function parsePicture(frame: Uint8Array, v22: boolean): Picture | null {
+  const encoding = frame[0] ?? 0;
+  let at = 1;
+  let declared: string;
+  if (v22) {
+    declared = decodeLatin1(frame.subarray(1, 4));
+    at = 4;
+  } else {
+    const end = frame.indexOf(0, at);
+    if (end < 0) return null;
+    declared = decodeLatin1(frame.subarray(at, end));
+    at = end + 1;
+  }
+  const type = frame[at] ?? 0;
+  at += 1;
+  const end = terminator(encoding, frame, at);
+  if (end < 0) return null;
+  at = end + (encoding === 1 || encoding === 2 ? 2 : 1);
+  const data = frame.slice(at);
+  if (data.length === 0) return null;
+  return { mime: pictureMime(data, declared), type, data };
+}
+
 /** True when `id` looks like a frame id: four (or three) upper-case letters and digits. */
 function isFrameId(id: string): boolean {
   return /^[A-Z0-9]{3,4}$/.test(id);
@@ -157,6 +193,7 @@ export function parseId3v2(tag: Uint8Array): Id3v2 | null {
     at = version === 3 ? 4 + u32be(body, 0) : synchsafe(body, 0);
   }
   const text = new Map<string, string>();
+  const pictures: Picture[] = [];
   const idLength = version === 2 ? 3 : 4;
   const headerLength = version === 2 ? 6 : HEADER;
   while (at + headerLength <= body.length) {
@@ -188,7 +225,10 @@ export function parseId3v2(tag: Uint8Array): Id3v2 | null {
       if ((frameFlags & 0x0001) !== 0) frame = frame.subarray(4);
       if ((frameFlags & 0x0002) !== 0) frame = resync(frame);
     }
-    if (id === 'TXXX') {
+    if (id === 'APIC' || rawId === 'PIC') {
+      const picture = parsePicture(frame, version === 2);
+      if (picture) pictures.push(picture);
+    } else if (id === 'TXXX') {
       const [description, ...values] = textValues(frame);
       if (description !== undefined && values.length > 0)
         text.set(`TXXX:${description.toUpperCase()}`, values.join(', '));
@@ -197,7 +237,7 @@ export function parseId3v2(tag: Uint8Array): Id3v2 | null {
       if (values.length > 0 && !text.has(id)) text.set(id, values.join(', '));
     }
   }
-  return { version, text };
+  return { version, text, pictures };
 }
 
 /** The fields Playlark uses, from a parsed tag. */
@@ -216,5 +256,11 @@ export function id3v2Tags(tag: Id3v2): Tags {
   if (genre) setText(tags, 'genre', genre.split(', ').map(id3Genre).join(', '));
   const compilation = parseFlag(t.get('TCMP') ?? t.get('TXXX:COMPILATION'));
   if (compilation !== undefined) tags.compilation = compilation;
+  setText(tags, 'artistSort', t.get('TSOP'));
+  setText(tags, 'albumArtistSort', t.get('TSO2') ?? t.get('TXXX:ALBUMARTISTSORT'));
+  setText(tags, 'albumSort', t.get('TSOA'));
+  setText(tags, 'titleSort', t.get('TSOT'));
+  const replayGain = replayGainFrom((key) => t.get(`TXXX:REPLAYGAIN_${key}`));
+  if (replayGain) tags.replayGain = replayGain;
   return tags;
 }

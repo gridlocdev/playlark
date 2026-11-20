@@ -227,6 +227,28 @@
   border-radius: var(--pl-radius);
   background: var(--pl-line-soft);
   color: var(--pl-text-3);
+  overflow: hidden;
+}
+.pl-now-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pl-unreadable-list {
+  margin: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.pl-unreadable-list div + div {
+  margin-top: 8px;
+}
+.pl-unreadable-list dt {
+  font-family: var(--pl-mono, ui-monospace, monospace);
+  word-break: break-all;
+}
+.pl-unreadable-list dd {
+  margin: 2px 0 0;
+  color: var(--pl-text-3);
 }
 .pl-now-text {
   min-width: 0;

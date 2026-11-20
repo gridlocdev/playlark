@@ -3,7 +3,7 @@
  * the files are in memory, in a browser folder, on the NAS or on disk behind the desktop app.
  */
 import type { ByteSource, LibraryFile, ScanSource } from '@playlark/core';
-import { isSkippedName, memorySource } from '@playlark/core';
+import { isLibraryPath, isSkippedName, memorySource } from '@playlark/core';
 
 export type SourceKind = 'memory' | 'browser' | 'nas' | 'desktop';
 
@@ -167,7 +167,7 @@ export function browserFolderLibrary(root: FileSystemDirectoryHandle): LibrarySo
       if (isSkippedName(name)) continue;
       const path = prefix ? `${prefix}/${name}` : name;
       if (handle.kind === 'directory') await walk(handle as FileSystemDirectoryHandle, path, out);
-      else {
+      else if (isLibraryPath(path)) {
         const file = await (handle as FileSystemFileHandle).getFile();
         out.push({ path, size: file.size, mtime: file.lastModified });
       }

@@ -1,7 +1,7 @@
 // Desktop smoke test: the built Electron app starts headless (no window, Dock icon, sound or system dialog) on a
 // throwaway profile, lists the fixture folder and plays it. `just e2e-desktop` builds it first. The throwaway
 // profile matters: the app must never read the owner's settings, window state or music folder.
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,6 +87,36 @@ test.describe('Desktop app', () => {
         await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().some((w) => w.isVisible())),
         'no window shows on the screen',
       ).toBe(false);
+      expect(errors).toEqual([]);
+    } finally {
+      await closeApp(app);
+      rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  test('keeps the index in its data folder and shows a song’s own cover', async ({ seed }) => {
+    seed('covers');
+    const temp = realpathSync(mkdtempSync(path.join(tmpdir(), 'playlark-e2e-')));
+    const profile = path.join(temp, 'profile');
+    const app = await electron.launch({
+      cwd: DESKTOP,
+      args: ['out/main.js'],
+      env: { ...process.env, PLAYLARK_HEADLESS: '1', PLAYLARK_USER_DATA: profile, PLAYLARK_MUSIC: DATA },
+    });
+    try {
+      const window = await app.firstWindow();
+      const errors = watchErrors(window);
+      await waitForApp(window);
+      await expect
+        .poll(() => existsSync(path.join(profile, 'library.json')), 'the index is saved')
+        .toBe(true);
+      expect(readdirSync(path.join(profile, 'covers'))).toHaveLength(1);
+      await songs(window)
+        .getByRole('row', { name: /Framed/ })
+        .dblclick();
+      const cover = nowPlaying(window).locator('.pl-now-cover img');
+      await expect(cover).toHaveAttribute('src', /^app:\/\/playlark\/cover\/[0-9a-f]{64}$/);
+      await expect.poll(() => cover.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(8);
       expect(errors).toEqual([]);
     } finally {
       await closeApp(app);

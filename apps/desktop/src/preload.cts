@@ -19,4 +19,11 @@ contextBridge.exposeInMainWorld('playlarkNative', {
     choose: () => ipcRenderer.invoke('playlark:choose-folder'),
   },
   listFiles: () => ipcRenderer.invoke('playlark:list-files'),
+  index: {
+    load: () => ipcRenderer.invoke('playlark:load-index'),
+    save: (text: string) => ipcRenderer.invoke('playlark:save-index', text),
+    saveCover: (id: string, mime: string, data: Uint8Array) =>
+      ipcRenderer.invoke('playlark:save-cover', id, mime, data),
+    pruneCovers: (keep: readonly string[]) => ipcRenderer.invoke('playlark:prune-covers', keep),
+  },
 });

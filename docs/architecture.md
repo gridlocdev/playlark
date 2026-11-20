@@ -18,12 +18,15 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
      │                 │                        was given)           │
      │                 ├─ serverLibrary        (NAS: /api)           │
      │                 └─ urlLibrary           (desktop: app://)     │
+     │  IndexStore ─┬─ memoryIndexStore  (tests)                     │
+     │              ├─ browserIndexStore (IndexedDB)                 │
+     │              └─ bridgeIndexStore  (desktop: data folder)      │
      │  settings (localStorage)                                      │
      └─────────────────────────────┬─────────────────────────────────┘
                                    │
      ┌──────────────── packages/core (pure TS) ─────────────────┐
      │  tags: ID3v1/v2, MP3 stream, FLAC, MP4, Ogg, WAV          │
-     │  library: files, songs, sort, scanLibrary                 │
+     │  library: files, songs, sort, scanLibrary, index, covers  │
      │  queue                                                    │
      └──────────────────────────────────────────────────────────┘
 
@@ -38,7 +41,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 - `@playlark/ui` holds everything that touches the page: signals, Web Audio, `fetch`, `localStorage`, and the shared components.
 - The apps are thin. Each app picks a library source, puts the UI on the page, and connects the parts that are native to its host.
 - Each package's `src/index.ts` names what the package exports, with no `export *`. Its `package.json` `exports` field allows only that file. Tests import through it too.
-- The architecture test (`test/architecture.test.ts`) enforces these rules. It also keeps `fetch` in `packages/ui/src/library/sources.ts` and `localStorage` in `packages/ui/src/settings.ts`.
+- The architecture test (`test/architecture.test.ts`) enforces these rules. It also keeps `fetch` in `packages/ui/src/library/sources.ts`, `localStorage` in `packages/ui/src/settings.ts`, and IndexedDB in `packages/ui/src/library/indexStore.ts`.
 
 ## Core (`packages/core`)
 
@@ -49,7 +52,8 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
   - Ogg uses Vorbis or Opus comments, and the last granule position.
   - WAV uses `fmt `, `LIST INFO` and `id3 `.
 - **Songs (§4.4).** `songFrom` fills in what the tags leave out: the title from the file name, Unknown Artist and Unknown Album. A file that can't be read becomes an unreadable song with its error. It isn't dropped.
-- **Scans (§3).** `scanLibrary` reads a few files at a time and reports its progress. It reuses each song whose size and modified time haven't changed.
+- **Scans (§3).** `scanLibrary` reads a few files at a time and reports its progress and each song as it is read. It reuses each song whose size and modified time haven't changed. Each embedded picture is named by the SHA-256 of its bytes (`sha256.ts`, since Web Crypto is missing on plain HTTP) and handed out once; a song without one gets its folder's cover image.
+- **The index (§3.2).** `makeIndex` and `parseIndex` write and read the cached scan; anything wrong with it means a full scan. `coverIds` says which stored covers are still used, and `findMoves` matches a song that moved to its new path.
 - **Sorting (§5).** The sort is natural and ignores case and a leading "The ".
 - **The queue (§6).** The queue is immutable. It has `playFrom`, `next`, `previous` (Previous restarts the song after 3 s) and `prune`.
 
@@ -58,6 +62,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 - **`Player`** holds the queue, the play state (`stopped`, `loading`, `playing`, `paused`), the position, the duration and the volume, as signals. It reads song bytes through the library source and hands them to an `AudioEngine`. After `MAX_FAILURES` songs in a row fail, it stops. If the browser keeps the sound off until the user acts, the player pauses and says so.
 - **`WebAudioEngine`** decodes songs and plays them through a gain node.
 - **Library sources** list the music files and give each one a `ByteSource` and a URL to play from.
+- **Index stores** keep the index and its covers between runs: IndexedDB in the browser, the data folder over the bridge on the desktop.
 - **Commands.**
   - `CommandCatalog` holds every command, with its shortcuts, its group and its enabled check.
   - Shortcuts use `mod`, which is ⌘ on a Mac and Ctrl elsewhere. Key names are canonical, such as `right` and `esc`.
@@ -65,7 +70,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 
 ## Web app (`apps/web`)
 
-- **`AppController`** holds the window's state as signals: the open folder and its songs, the scan, the cursor in the song list, the open dialog and the status-bar notice. Components read the signals, and commands call the controller's methods.
+- **`AppController`** holds the window's state as signals: the open folder and its songs, the scan, the cursor in the song list, the playing song's cover, the open dialog and the status-bar notice. Components read the signals, and commands call the controller's methods. Opening a folder shows its saved index at once, then rescans, updating the list every 500 ms, and saves the result.
 - `main.tsx` picks the library source:
   - the desktop bridge when the app runs in Electron;
   - the server's `/api` when the server answers;
@@ -82,5 +87,5 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 ## Desktop (`apps/desktop`)
 
 - `crashGuard.ts` is registered first in the main process. An uncaught error or an unhandled rejection is logged, and the app exits with an error. Electron never shows it in a dialog.
-- The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder.
+- The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder, and stored covers at `app://playlark/cover/<sha256>`. The index is `library.json` in the data folder, with the covers in `covers/` beside it.
 - With `--headless`, the app runs with no window, no Dock icon and no sound, on a throwaway profile. It skips native dialogs and records each one in `globalThis.playlarkHeadless`.

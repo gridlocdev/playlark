@@ -24,11 +24,11 @@ Playlark is a TypeScript music player for a folder of MP3, FLAC, M4A, Ogg and WA
 | Path | What it is |
 | --- | --- |
 | `packages/core` | The engine: tag and stream readers for every format, songs, sorting, library scans and the play queue. No DOM or Node (ESLint enforces this). |
-| `packages/node-files` | Music folders on Node, shared by the desktop app and the server: listings confined to the folder, media replies with Range support, atomic writes. |
+| `packages/node-files` | Music folders on Node, shared by the desktop app and the server: listings confined to the folder, media replies with Range support, atomic writes, the index and its covers in a data folder. |
 | `packages/ui` | Preact and signals: the command catalog, the player and its Web Audio engine, library sources, settings and shared components. |
 | `apps/web` | The Vite entry point and the app's screens. One static build serves the browser, the NAS server and the desktop app. |
 | `apps/server` | The NAS server (`node:http`, GET and HEAD only). It serves the client and `/api/{info,files,media}` for one music folder. |
-| `apps/desktop` | The Electron shell: the main process, the sandboxed preload bridge, the native menu, and `app://playlark/media/`. |
+| `apps/desktop` | The Electron shell: the main process, the sandboxed preload bridge, the native menu, and `app://playlark/media/` and `/cover/`. |
 
 ## Golden rules
 
@@ -38,7 +38,7 @@ Playlark is a TypeScript music player for a folder of MP3, FLAC, M4A, Ogg and WA
 4. **The UI reaches songs only through a `LibrarySource`.** It never knows whether the songs are in memory, picked in the browser, on the NAS or on disk.
 5. **Confined access.**
    - `fetch` is used only in `packages/ui/src/library/sources.ts`, and always with a timeout.
-   - `localStorage` is used only in `packages/ui/src/settings.ts`.
+   - `localStorage` is used only in `packages/ui/src/settings.ts`, and IndexedDB only in `packages/ui/src/library/indexStore.ts`.
 6. **Security.**
    - The Electron renderer is sandboxed with context isolation. Its only native access is the `playlarkNative` bridge.
    - The desktop app and the server confine every path to the music folder, symlinks included.

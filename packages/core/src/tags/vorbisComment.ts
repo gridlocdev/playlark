@@ -1,6 +1,16 @@
 /** Vorbis comments (PRD §4.1): the tags in FLAC, Ogg Vorbis and Opus files. */
 import { decodeUtf8, u32le } from '../bytes.ts';
-import { type Tags, parseFlag, parseYear, setPair, setText, setTotal } from './types.ts';
+import { decodeBase64, parseFlacPicture } from './picture.ts';
+import {
+  type Picture,
+  type Tags,
+  parseFlag,
+  parseYear,
+  replayGainFrom,
+  setPair,
+  setText,
+  setTotal,
+} from './types.ts';
 
 /** The comment fields by upper-case name; repeated fields keep every value in order. */
 export type Comments = ReadonlyMap<string, readonly string[]>;
@@ -62,5 +72,41 @@ export function vorbisTags(c: Comments): Tags {
   setText(tags, 'genre', all('GENRE'));
   const compilation = parseFlag(first('COMPILATION'));
   if (compilation !== undefined) tags.compilation = compilation;
+  setText(tags, 'artistSort', first('ARTISTSORT'));
+  setText(tags, 'albumArtistSort', first('ALBUMARTISTSORT'));
+  setText(tags, 'albumSort', first('ALBUMSORT'));
+  setText(tags, 'titleSort', first('TITLESORT'));
+  const replayGain = replayGainFrom((key) => first(`REPLAYGAIN_${key}`)) ?? r128Gain(c);
+  if (replayGain) tags.replayGain = replayGain;
   return tags;
+}
+
+/**
+ * Opus' `R128_TRACK_GAIN` and `R128_ALBUM_GAIN`: whole numbers in 1/256 dB toward −23 LUFS. ReplayGain aims at
+ * −18 LUFS, 5 dB louder, so 5 dB is added.
+ */
+function r128Gain(c: Comments): Tags['replayGain'] {
+  const read = (name: string) => {
+    const v = c.get(name)?.[0]?.trim();
+    if (v === undefined || !/^[+-]?\d+$/.test(v)) return undefined;
+    return Math.round((Number(v) / 256 + 5) * 100) / 100;
+  };
+  const trackGain = read('R128_TRACK_GAIN');
+  const albumGain = read('R128_ALBUM_GAIN');
+  if (trackGain === undefined && albumGain === undefined) return undefined;
+  return {
+    ...(trackGain !== undefined ? { trackGain } : {}),
+    ...(albumGain !== undefined ? { albumGain } : {}),
+  };
+}
+
+/** The pictures in `METADATA_BLOCK_PICTURE` fields (base64 FLAC picture blocks), in order. */
+export function vorbisPictures(c: Comments): Picture[] {
+  const out: Picture[] = [];
+  for (const value of c.get('METADATA_BLOCK_PICTURE') ?? []) {
+    const bytes = decodeBase64(value);
+    const picture = bytes ? parseFlacPicture(bytes) : null;
+    if (picture) out.push(picture);
+  }
+  return out;
 }

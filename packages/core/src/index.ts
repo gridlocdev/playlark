@@ -20,23 +20,57 @@ export {
 } from './bytes.ts';
 export {
   parseFlag,
+  parseGainNumber,
   parsePair,
   parseYear,
   setPair,
   setText,
+  pickCover,
+  replayGainFrom,
   setTotal,
   type AudioFormat,
   type Codec,
+  type Picture,
   type ReadResult,
+  type ReplayGain,
   type StreamInfo,
   type Tags,
 } from './tags/types.ts';
 export { genreName, id3Genre } from './tags/genres.ts';
 export { formatOfPath, readTags } from './tags/readTags.ts';
-export { baseName, isMusicPath, isSkippedName, stem, type LibraryFile } from './library/files.ts';
-export { songFrom, UNKNOWN_ALBUM, UNKNOWN_ARTIST, unreadableSong, type Song } from './library/song.ts';
+export { decodeBase64, parseFlacPicture, pictureMime } from './tags/picture.ts';
+export { parseVorbisComment, vorbisPictures, vorbisTags, type Comments } from './tags/vorbisComment.ts';
+export {
+  baseName,
+  coverRank,
+  folderOf,
+  isCoverPath,
+  isLibraryPath,
+  isMusicPath,
+  isSkippedName,
+  stem,
+  type LibraryFile,
+} from './library/files.ts';
+export {
+  songFrom,
+  UNKNOWN_ALBUM,
+  UNKNOWN_ARTIST,
+  unreadableSong,
+  type CoverRef,
+  type Song,
+} from './library/song.ts';
+export {
+  coverIds,
+  findMoves,
+  INDEX_FORMAT,
+  makeIndex,
+  parseIndex,
+  type LibraryIndex,
+} from './library/index.ts';
+export { sha256Hex } from './sha256.ts';
 export { compareNames, compareSongs, sortKey, sortSongs } from './library/sort.ts';
 export {
+  folderCovers,
   readSong,
   scanLibrary,
   type ScanOptions,

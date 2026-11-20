@@ -2,7 +2,7 @@
 export { Channels, type FolderInfo, type NativeMenuItem } from './bridge.ts';
 export { guardMainErrors } from './crashGuard.ts';
 export { folderExists, folderInfo, loadFolderChoice, saveFolderChoice, startFolder } from './folderChoice.ts';
-export { MEDIA_PREFIX, mediaPath, mediaResponse } from './media.ts';
+export { COVER_PREFIX, coverResponse, MEDIA_PREFIX, mediaPath, mediaResponse } from './media.ts';
 export { editMenuTemplate, toTemplate, withStandardMenus, type EditMenuParams } from './menu.ts';
 export {
   allowPermission,

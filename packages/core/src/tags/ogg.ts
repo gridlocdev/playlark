@@ -9,8 +9,8 @@ import {
   u16le,
   u32le,
 } from '../bytes.ts';
-import type { StreamInfo, Tags } from './types.ts';
-import { parseVorbisComment, vorbisTags } from './vorbisComment.ts';
+import { type Picture, type StreamInfo, type Tags, pickCover } from './types.ts';
+import { parseVorbisComment, vorbisPictures, vorbisTags } from './vorbisComment.ts';
 
 const PAGE_HEADER = 27;
 /** The last page is searched for in this many bytes at the end of the file. */
@@ -92,7 +92,9 @@ async function lastGranule(source: ByteSource, serial: number): Promise<number> 
   return 0;
 }
 
-export async function readOgg(source: ByteSource): Promise<{ tags: Tags; stream: StreamInfo }> {
+export async function readOgg(
+  source: ByteSource,
+): Promise<{ tags: Tags; stream: StreamInfo; cover?: Picture }> {
   const { packets, serial } = await firstPackets(source, 2);
   const [head, comment] = packets as [Uint8Array, Uint8Array];
   const granule = await lastGranule(source, serial);
@@ -132,5 +134,7 @@ export async function readOgg(source: ByteSource): Promise<{ tags: Tags; stream:
   if (stream.duration > 0 && stream.bitrate === undefined)
     stream.bitrate = Math.round((source.size * 8) / stream.duration);
   const parsed = parseVorbisComment(commentBody);
-  return { tags: parsed ? vorbisTags(parsed) : {}, stream };
+  if (!parsed) return { tags: {}, stream };
+  const cover = pickCover(vorbisPictures(parsed));
+  return { tags: vorbisTags(parsed), stream, ...(cover ? { cover } : {}) };
 }

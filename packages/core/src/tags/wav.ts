@@ -11,7 +11,7 @@ import {
   u32le,
 } from '../bytes.ts';
 import { id3v2Tags, parseId3v2 } from './id3v2.ts';
-import { type StreamInfo, type Tags, parseYear, setPair, setText } from './types.ts';
+import { type Picture, type StreamInfo, type Tags, parseYear, pickCover, setPair, setText } from './types.ts';
 
 /** Tag chunks bigger than this are skipped. */
 const MAX_TAG_CHUNK = 16 * 1024 * 1024;
@@ -59,7 +59,9 @@ function infoTags(b: Uint8Array): Tags {
   return tags;
 }
 
-export async function readWav(source: ByteSource): Promise<{ tags: Tags; stream: StreamInfo }> {
+export async function readWav(
+  source: ByteSource,
+): Promise<{ tags: Tags; stream: StreamInfo; cover?: Picture }> {
   const riff = await readExactly(source, 0, 12, 'WAV header');
   if (!startsWith(riff, 'RIFF') || !startsWith(riff, 'WAVE', 8))
     throw new FormatError('This isn’t a WAV file.');
@@ -68,6 +70,7 @@ export async function readWav(source: ByteSource): Promise<{ tags: Tags; stream:
   let dataBytes = 0;
   let info: Tags = {};
   let id3: Tags = {};
+  let cover: Picture | undefined;
   while (at + 8 <= source.size) {
     const h = await readExactly(source, at, 8, 'WAV chunk');
     const id = fourCC(h, 0);
@@ -80,7 +83,10 @@ export async function readWav(source: ByteSource): Promise<{ tags: Tags; stream:
       if (startsWith(list, 'INFO')) info = infoTags(list);
     } else if ((id === 'id3 ' || id === 'ID3 ') && size <= MAX_TAG_CHUNK) {
       const parsed = parseId3v2(await readExactly(source, body, size, 'WAV tags'));
-      if (parsed) id3 = id3v2Tags(parsed);
+      if (parsed) {
+        id3 = id3v2Tags(parsed);
+        cover = pickCover(parsed.pictures);
+      }
     }
     at = body + size + (size % 2);
   }
@@ -98,5 +104,5 @@ export async function readWav(source: ByteSource): Promise<{ tags: Tags; stream:
     bitrate: byteRate * 8,
   };
   // The ID3 chunk is what modern taggers write; INFO fills in what it leaves out.
-  return { tags: { ...info, ...id3 }, stream };
+  return { tags: { ...info, ...id3 }, stream, ...(cover ? { cover } : {}) };
 }

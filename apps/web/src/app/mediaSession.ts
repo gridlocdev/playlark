@@ -20,8 +20,14 @@ export function startMediaSession(app: AppController, catalog: CommandCatalog): 
   for (const [action, run] of handlers) setHandler(session, action, run);
   const stopSong = effect(() => {
     const song = player.currentSong.value;
+    const cover = app.nowCover.value;
     session.metadata = song
-      ? new MediaMetadata({ title: song.title, artist: song.artist, album: song.album })
+      ? new MediaMetadata({
+          title: song.title,
+          artist: song.artist,
+          album: song.album,
+          ...(cover ? { artwork: [{ src: cover }] } : {}),
+        })
       : null;
   });
   const stopState = effect(() => {

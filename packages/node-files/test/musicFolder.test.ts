@@ -14,6 +14,8 @@ beforeEach(async () => {
   await mkdir(path.join(root, '.hidden'));
   await writeFile(path.join(root, 'Artist/Album/01 Song.mp3'), 'abcdefghij');
   await writeFile(path.join(root, 'Artist/Album/cover.jpg'), 'x');
+  await writeFile(path.join(root, 'Artist/Album/notes.txt'), 'x');
+  await writeFile(path.join(root, 'Artist/Album/photo.jpg'), 'x');
   await writeFile(path.join(root, '.hidden/secret.mp3'), 'x');
   await writeFile(path.join(root, 'Loose.flac'), '');
   await writeFile(path.join(outside, 'elsewhere.mp3'), 'x');
@@ -26,9 +28,13 @@ afterEach(async () => {
 });
 
 describe('the music folder', () => {
-  it('lists music files, skipping hidden ones and symlinked folders', async () => {
+  it('lists music files and folder covers, skipping hidden ones and symlinked folders', async () => {
     const files = await listMusicFiles(root);
-    expect(files.map((f) => f.path)).toEqual(['Artist/Album/01 Song.mp3', 'Loose.flac']);
+    expect(files.map((f) => f.path)).toEqual([
+      'Artist/Album/01 Song.mp3',
+      'Artist/Album/cover.jpg',
+      'Loose.flac',
+    ]);
     expect(files[0]!.size).toBe(10);
   });
 
@@ -67,9 +73,11 @@ describe('the music folder', () => {
     expect(part).toMatchObject({ status: 206, body: { start: 2, end: 4 } });
     expect(part.headers['Content-Range']).toBe('bytes 2-4/10');
     expect((await mediaReply(root, 'Artist/Album/01 Song.mp3', 'bytes=20-')).status).toBe(416);
-    await expect(mediaReply(root, 'Artist/Album/cover.jpg', undefined)).rejects.toMatchObject({
-      code: 'not-found',
-    });
+    expect((await mediaReply(root, 'Artist/Album/cover.jpg', undefined)).headers['Content-Type']).toBe(
+      'image/jpeg',
+    );
+    for (const other of ['Artist/Album/notes.txt', 'Artist/Album/photo.jpg'])
+      await expect(mediaReply(root, other, undefined)).rejects.toMatchObject({ code: 'not-found' });
     await expect(mediaReply(root, '../elsewhere.mp3', undefined)).rejects.toMatchObject({ code: 'outside' });
   });
 });

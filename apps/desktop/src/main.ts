@@ -21,10 +21,10 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { listMusicFiles } from '@playlark/node-files';
+import { indexFolder, listMusicFiles } from '@playlark/node-files';
 import { Channels, type FolderInfo } from './bridge.ts';
 import { folderExists, folderInfo, saveFolderChoice, startFolder } from './folderChoice.ts';
-import { MEDIA_PREFIX, mediaResponse } from './media.ts';
+import { COVER_PREFIX, MEDIA_PREFIX, coverResponse, mediaResponse } from './media.ts';
 import { editMenuTemplate, toTemplate, withStandardMenus } from './menu.ts';
 import {
   allowPermission,
@@ -66,6 +66,8 @@ const paths = dataPaths(process.env, headless, () => {
 if (paths.userData) app.setPath('userData', paths.userData);
 const windowFile = path.join(app.getPath('userData'), 'window-state.json');
 const folderFile = path.join(app.getPath('userData'), 'folder.json');
+/** The library index and covers (PRD §3.2): beside the window state, never in the music folder. */
+const index = indexFolder(app.getPath('userData'));
 
 // A music player starts sound from menu items and media keys, which don't count as a gesture on the page.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -221,6 +223,20 @@ function registerIpc(): void {
     if (!musicFolder) return Promise.reject(new Error('No music folder is open.'));
     return listMusicFiles(musicFolder);
   });
+  ipcMain.handle(Channels.loadIndex, (e) => (trusted(e) ? index.load() : refuse()));
+  ipcMain.handle(Channels.saveIndex, (e, text: unknown) => {
+    if (!trusted(e) || typeof text !== 'string') return refuse();
+    return index.save(text);
+  });
+  ipcMain.handle(Channels.saveCover, (e, id: unknown, mime: unknown, data: unknown) => {
+    if (!trusted(e) || typeof id !== 'string' || typeof mime !== 'string' || !(data instanceof Uint8Array))
+      return refuse();
+    return index.saveCover(id, mime, data);
+  });
+  ipcMain.handle(Channels.pruneCovers, (e, keep: unknown) => {
+    if (!trusted(e) || !Array.isArray(keep) || !keep.every((k) => typeof k === 'string')) return refuse();
+    return index.pruneCovers(new Set(keep));
+  });
   ipcMain.on(Channels.setMenu, (e, items: unknown) => {
     if (!trusted(e) || !Array.isArray(items)) return;
     const send = (id: string) => win?.webContents.send(Channels.command, id);
@@ -256,6 +272,8 @@ else {
       const url = new URL(req.url);
       if (url.host === 'playlark' && url.pathname.startsWith(MEDIA_PREFIX))
         return mediaResponse(musicFolder, url.pathname, req.headers.get('range'));
+      if (url.host === 'playlark' && url.pathname.startsWith(COVER_PREFIX))
+        return coverResponse(index, url.pathname);
       const file = appRequestFile(webRoot, req.url);
       return file ? net.fetch(pathToFileURL(file).toString()) : new Response('Forbidden', { status: 403 });
     });

@@ -2,7 +2,7 @@
 import type { Dirent } from 'node:fs';
 import { readdir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { type LibraryFile, isMusicPath, isSkippedName } from '@playlark/core';
+import { type LibraryFile, isLibraryPath, isSkippedName } from '@playlark/core';
 import { FolderError } from './errors.ts';
 
 /**
@@ -27,7 +27,7 @@ export async function listMusicFiles(root: string): Promise<LibraryFile[]> {
         const full = path.join(dir, entry.name);
         const relPath = rel ? `${rel}/${entry.name}` : entry.name;
         if (entry.isDirectory()) return walk(full, relPath);
-        if (!(entry.isFile() || entry.isSymbolicLink()) || !isMusicPath(relPath)) return;
+        if (!(entry.isFile() || entry.isSymbolicLink()) || !isLibraryPath(relPath)) return;
         // A broken link, a link out of the folder, or a file removed mid-scan isn't music here.
         const real = entry.isSymbolicLink() ? await realpath(full).catch(() => null) : full;
         if (real === null || (real !== full && !real.startsWith(realRoot + path.sep))) return;
@@ -100,6 +100,11 @@ export function audioMimeType(file: string): string {
       return 'audio/ogg';
     case '.opus':
       return 'audio/ogg; codecs=opus';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.png':
+      return 'image/png';
     case '.wav':
     case '.wave':
       return 'audio/wav';
@@ -122,7 +127,7 @@ export interface MediaReply {
  */
 export async function mediaReply(root: string, rel: string, range: string | undefined): Promise<MediaReply> {
   const file = await resolveInside(root, rel);
-  if (!isMusicPath(rel)) throw new FolderError('not-found', 'That is not a music file.');
+  if (!isLibraryPath(rel)) throw new FolderError('not-found', 'That is not a music file or a cover.');
   const info = await stat(file);
   if (!info.isFile()) throw new FolderError('not-found', 'That is not a music file.');
   const size = info.size;

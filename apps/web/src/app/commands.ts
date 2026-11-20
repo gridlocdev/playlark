@@ -5,8 +5,8 @@
 import { CommandCatalog, SEEK_STEP, VOLUME_STEP, type CommandSpec } from '@playlark/ui';
 import type { AppController, DialogKind } from './controller.ts';
 
-/** The command that opens each dialog: with that dialog open, its own shortcut closes it. */
-const DIALOG_COMMAND: Readonly<Record<DialogKind, string>> = {
+/** The command that opens each dialog that has one: with that dialog open, its own shortcut closes it. */
+const DIALOG_COMMAND: Readonly<Partial<Record<DialogKind, string>>> = {
   commands: 'help.commands',
   shortcuts: 'help.shortcuts',
 };

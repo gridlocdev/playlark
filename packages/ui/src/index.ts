@@ -46,6 +46,13 @@ export {
   type LibrarySource,
   type SourceKind,
 } from './library/sources.ts';
+export {
+  bridgeIndexStore,
+  browserIndexStore,
+  memoryIndexStore,
+  type IndexBridge,
+  type IndexStore,
+} from './library/indexStore.ts';
 export { WebAudioEngine, volumeGain, type AudioEngine, type DecodedSong } from './player/engine.ts';
 export {
   MAX_FAILURES,

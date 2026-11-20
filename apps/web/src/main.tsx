@@ -4,7 +4,9 @@ import '@playlark/ui/styles.css';
 import './app.css';
 import {
   WebAudioEngine,
+  bridgeIndexStore,
   browserFolderLibrary,
+  browserIndexStore,
   encodePath,
   every,
   browserSettings,
@@ -92,6 +94,10 @@ async function start(): Promise<void> {
             'Opening a music folder needs Chrome or Edge. Use the desktop app or a Playlark server instead.',
         }
       : {}),
+    index: native
+      ? bridgeIndexStore(native.index, (id) => `app://playlark/cover/${id}`)
+      : browserIndexStore(),
+    imageUrl: (bytes, mime) => URL.createObjectURL(new Blob([bytes], { type: mime })),
     volume: saved.volume,
     onVolume: (volume) => void settings.save({ ...settings.load(), volume }),
   });

@@ -61,7 +61,7 @@ const RENDERER = ['packages/ui', 'apps/web'];
  */
 const CONFINED: { rule: Rule; allowed: readonly string[] }[] = [
   { rule: 'fetch', allowed: ['packages/ui/src/library/sources.ts'] },
-  { rule: 'storage', allowed: ['packages/ui/src/settings.ts'] },
+  { rule: 'storage', allowed: ['packages/ui/src/settings.ts', 'packages/ui/src/library/indexStore.ts'] },
   { rule: 'key-listener', allowed: ['packages/ui/src/commands/'] },
   { rule: 'timer', allowed: ['packages/ui/src/schedule.ts'] },
   {

@@ -1,9 +1,17 @@
 /** A song in the library: one music file's tags and stream facts, with fallbacks for what the tags leave out (PRD §4.4). */
-import type { AudioFormat, Codec, Tags } from '../tags/types.ts';
+import type { AudioFormat, Codec, ReplayGain, Tags } from '../tags/types.ts';
 import { type LibraryFile, stem } from './files.ts';
 
 export const UNKNOWN_ARTIST = 'Unknown Artist';
 export const UNKNOWN_ALBUM = 'Unknown Album';
+
+/**
+ * Where a song's cover is (PRD §4.6): a picture in the file, stored once beside the index by the SHA-256 of its
+ * bytes, or an image file in the song's folder.
+ */
+export type CoverRef =
+  | { readonly kind: 'embedded'; readonly id: string; readonly mime: string }
+  | { readonly kind: 'file'; readonly path: string };
 
 export interface Song {
   /** Relative path in the library folder: the song's id everywhere. */
@@ -25,6 +33,12 @@ export interface Song {
   readonly year?: number;
   readonly genre?: string;
   readonly compilation: boolean;
+  readonly artistSort?: string;
+  readonly albumArtistSort?: string;
+  readonly albumSort?: string;
+  readonly titleSort?: string;
+  readonly replayGain?: ReplayGain;
+  readonly cover?: CoverRef;
   /** Seconds. */
   readonly duration: number;
   readonly sampleRate: number;
@@ -73,6 +87,11 @@ export function songFrom(file: LibraryFile, read: Read): Song {
     ...(tags.year !== undefined ? { year: tags.year } : {}),
     ...(tags.genre !== undefined ? { genre: tags.genre } : {}),
     compilation: tags.compilation ?? false,
+    ...(tags.artistSort !== undefined ? { artistSort: tags.artistSort } : {}),
+    ...(tags.albumArtistSort !== undefined ? { albumArtistSort: tags.albumArtistSort } : {}),
+    ...(tags.albumSort !== undefined ? { albumSort: tags.albumSort } : {}),
+    ...(tags.titleSort !== undefined ? { titleSort: tags.titleSort } : {}),
+    ...(tags.replayGain !== undefined ? { replayGain: tags.replayGain } : {}),
     duration: stream.duration,
     sampleRate: stream.sampleRate,
     channels: stream.channels,

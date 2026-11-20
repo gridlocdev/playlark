@@ -19,6 +19,26 @@ export interface Tags {
   year?: number;
   genre?: string;
   compilation?: boolean;
+  artistSort?: string;
+  albumArtistSort?: string;
+  albumSort?: string;
+  titleSort?: string;
+  replayGain?: ReplayGain;
+}
+
+/** ReplayGain values (PRD §8.6): gains in dB, peaks as linear amplitude (1 = full scale). */
+export interface ReplayGain {
+  trackGain?: number;
+  trackPeak?: number;
+  albumGain?: number;
+  albumPeak?: number;
+}
+
+/** An embedded picture (PRD §4.6). `type` is the ID3/FLAC picture type: 3 is the front cover. */
+export interface Picture {
+  readonly mime: string;
+  readonly type: number;
+  readonly data: Uint8Array;
 }
 
 /** Facts about the audio stream (PRD §4.2, §4.3). */
@@ -38,15 +58,29 @@ export interface StreamInfo {
 }
 
 export type ReadResult =
-  | { readonly ok: true; readonly format: AudioFormat; readonly tags: Tags; readonly stream: StreamInfo }
+  | {
+      readonly ok: true;
+      readonly format: AudioFormat;
+      readonly tags: Tags;
+      readonly stream: StreamInfo;
+      /** The cover the file carries, chosen by §4.6's rule. */
+      readonly cover?: Picture;
+    }
   | { readonly ok: false; readonly error: string };
 
+export type TextField =
+  | 'title'
+  | 'artist'
+  | 'album'
+  | 'albumArtist'
+  | 'genre'
+  | 'artistSort'
+  | 'albumArtistSort'
+  | 'albumSort'
+  | 'titleSort';
+
 /** Sets a text field when the value has something in it once trimmed. */
-export function setText(
-  tags: Tags,
-  field: 'title' | 'artist' | 'album' | 'albumArtist' | 'genre',
-  value: string | undefined,
-): void {
+export function setText(tags: Tags, field: TextField, value: string | undefined): void {
   const v = value?.replace(/\0+$/, '').trim();
   if (v) tags[field] = v;
 }
@@ -85,4 +119,32 @@ export function setPair(tags: Tags, field: 'track' | 'disc', value: string | und
 export function setTotal(tags: Tags, field: 'trackTotal' | 'discTotal', value: string | undefined): void {
   const n = parsePair(value).n;
   if (n !== undefined) tags[field] = n;
+}
+
+/** "-6.54 dB", "+1.2", "0.988": the number at the start, when there is one. */
+export function parseGainNumber(value: string | undefined): number | undefined {
+  const m = /^\s*([+-]?\d+(?:\.\d+)?)/.exec(value ?? '');
+  const n = m ? Number(m[1]) : NaN;
+  return Number.isFinite(n) ? n : undefined;
+}
+
+/** Builds ReplayGain from `REPLAYGAIN_TRACK_GAIN`-style values, looked up by `get` (case as the format keeps it). */
+export function replayGainFrom(
+  get: (key: 'TRACK_GAIN' | 'TRACK_PEAK' | 'ALBUM_GAIN' | 'ALBUM_PEAK') => string | undefined,
+): ReplayGain | undefined {
+  const rg: ReplayGain = {};
+  const tg = parseGainNumber(get('TRACK_GAIN'));
+  const tp = parseGainNumber(get('TRACK_PEAK'));
+  const ag = parseGainNumber(get('ALBUM_GAIN'));
+  const ap = parseGainNumber(get('ALBUM_PEAK'));
+  if (tg !== undefined) rg.trackGain = tg;
+  if (tp !== undefined && tp > 0) rg.trackPeak = tp;
+  if (ag !== undefined) rg.albumGain = ag;
+  if (ap !== undefined && ap > 0) rg.albumPeak = ap;
+  return Object.keys(rg).length > 0 ? rg : undefined;
+}
+
+/** §4.6: the front cover (type 3), else the first picture. */
+export function pickCover(pictures: readonly Picture[]): Picture | undefined {
+  return pictures.find((p) => p.type === 3) ?? pictures[0];
 }

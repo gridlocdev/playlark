@@ -21,3 +21,15 @@ The queue panel (⌥⌘U) shows the playing song and what comes after it. Click 
 ## Desktop app
 
 The Electron app for macOS, Windows and Linux, with the menu bar built from the same commands, and the folder kept between starts.
+
+## Cover art
+
+The playing song's cover shows in the now-playing bar and on the lock screen. A picture inside the file wins; otherwise Playlark uses an image in the song's folder named `cover`, `folder`, `front` or `album` (`.jpg`, `.jpeg` or `.png`). Each picture is stored once beside the library index, never in the music folder.
+
+## Files that can’t be read
+
+A file that can't be read stays in the list, greyed out. The status bar says how many there are; **Show** lists each one with the reason.
+
+## Remembering the library
+
+Playlark keeps what it read from the folder (the desktop app in its data folder, the browser in its own storage) and shows it at once the next time. A rescan then reads only the files that changed, and the list fills in every half second while it runs.

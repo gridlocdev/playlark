@@ -1,13 +1,19 @@
 /** FLAC files (PRD §4): STREAMINFO for the stream, VORBIS_COMMENT for the tags. */
 import { type ByteSource, FormatError, readExactly, startsWith, u24be, u32be } from '../bytes.ts';
 import { readId3v2At } from './id3v2.ts';
-import type { StreamInfo, Tags } from './types.ts';
-import { parseVorbisComment, vorbisTags } from './vorbisComment.ts';
+import { parseFlacPicture } from './picture.ts';
+import { type Picture, type StreamInfo, type Tags, pickCover } from './types.ts';
+import { parseVorbisComment, vorbisPictures, vorbisTags } from './vorbisComment.ts';
 
 const STREAMINFO = 0;
 const VORBIS_COMMENT = 4;
+const PICTURE = 6;
+/** Picture blocks bigger than this are skipped rather than read. */
+const MAX_PICTURE = 16 * 1024 * 1024;
 
-export async function readFlac(source: ByteSource): Promise<{ tags: Tags; stream: StreamInfo }> {
+export async function readFlac(
+  source: ByteSource,
+): Promise<{ tags: Tags; stream: StreamInfo; cover?: Picture }> {
   // Some taggers put an ID3v2 tag in front of the "fLaC" marker; skip it.
   const id3 = await readId3v2At(source, 0);
   let at = id3?.length ?? 0;
@@ -16,6 +22,7 @@ export async function readFlac(source: ByteSource): Promise<{ tags: Tags; stream
   at += 4;
   let stream: StreamInfo | undefined;
   let tags: Tags = {};
+  const pictures: Picture[] = [];
   for (;;) {
     const header = await readExactly(source, at, 4, 'FLAC metadata');
     const last = ((header[0] ?? 0) & 0x80) !== 0;
@@ -32,12 +39,19 @@ export async function readFlac(source: ByteSource): Promise<{ tags: Tags; stream
       stream = { codec: 'flac', duration, sampleRate, channels, bitsPerSample };
     } else if (type === VORBIS_COMMENT) {
       const comments = parseVorbisComment(await readExactly(source, at, length, 'FLAC tags'));
-      if (comments) tags = vorbisTags(comments);
+      if (comments) {
+        tags = vorbisTags(comments);
+        pictures.push(...vorbisPictures(comments));
+      }
+    } else if (type === PICTURE && length <= MAX_PICTURE) {
+      const picture = parseFlacPicture(await readExactly(source, at, length, 'FLAC picture'));
+      if (picture) pictures.push(picture);
     }
     at += length;
     if (last || at >= source.size) break;
   }
   if (!stream) throw new FormatError('The FLAC file has no stream info.');
   if (stream.duration > 0) stream.bitrate = Math.round(((source.size - at) * 8) / stream.duration);
-  return { tags, stream };
+  const cover = pickCover(pictures);
+  return { tags, stream, ...(cover ? { cover } : {}) };
 }
