@@ -75,6 +75,13 @@ test.describe('Desktop app', () => {
       const bar = nowPlaying(window);
       await expect(bar).toContainText('Morning Tide');
       await expect(bar.getByRole('button', { name: 'Pause' })).toBeVisible();
+      // The hidden element the system's Now Playing follows loops silence; the song goes straight to the speakers.
+      expect(
+        await window.evaluate(() => {
+          const audio = document.querySelector('audio')!;
+          return { playing: !audio.paused, loop: audio.loop, stream: audio.srcObject !== null };
+        }),
+      ).toEqual({ playing: true, loop: true, stream: false });
       await expect(bar, 'the next song follows').toContainText('Salt Air', { timeout: 10_000 });
       // Show in Finder from the song's right-click menu: a headless run records the file instead of opening Finder.
       await songs(window)

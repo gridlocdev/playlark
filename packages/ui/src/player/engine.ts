@@ -1,7 +1,9 @@
 /**
  * The audio engine (PRD §8.3): decoded songs play from Web Audio buffers, each through its own gain (ReplayGain and
- * crossfades), into a volume gain and a MediaStream that one hidden `<audio>` element plays, so the system sees an
- * `<audio>` element playing (Media Session, PRD §15). The song after the playing one is scheduled to start on the
+ * crossfades), into a volume gain and straight to the speakers. A hidden `<audio>` element loops silence beside it,
+ * so the system sees an `<audio>` element playing (Media Session, PRD §15). The sound never goes through that
+ * element: Chromium plays a MediaStream through a buffer that speeds up or slows down to catch up after a stall,
+ * which puts the song slightly out of tune. The song after the playing one is scheduled to start on the
  * exact sample the playing one ends, so an album plays without a gap (PRD §8.6). The player talks to the
  * `AudioEngine` interface; tests pass a fake.
  */
@@ -56,7 +58,7 @@ export interface EngineContext {
   resume(): Promise<void>;
 }
 
-/** Where the sound goes and how it's started: the page's hidden `<audio>` element, or nothing in tests. */
+/** Where the sound goes and how it's started: the speakers and the page's silent `<audio>` element, or nothing in tests. */
 export interface EngineOutput {
   readonly node: AudioNode;
   /** Starts the sound; rejects with `NotAllowedError` while the browser keeps it off. */
@@ -76,6 +78,34 @@ interface Voice {
   readonly level: number;
   /** Context time at which offset 0 of the song plays (or would have). */
   readonly zero: number;
+}
+
+/** Chromium gives Media Session controls only to media at least 5 s long. */
+const SILENCE_SECONDS = 6;
+
+/** A WAV file of `seconds` of silence: 8-bit mono PCM at `rate`. */
+export function silentWav(seconds: number, rate: number): Uint8Array<ArrayBuffer> {
+  const frames = Math.round(seconds * rate);
+  const wav = new Uint8Array(44 + frames);
+  const view = new DataView(wav.buffer);
+  const text = (at: number, s: string) => {
+    for (let i = 0; i < 4; i++) wav[at + i] = s.charCodeAt(i);
+  };
+  text(0, 'RIFF');
+  view.setUint32(4, wav.length - 8, true);
+  text(8, 'WAVE');
+  text(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate, true); // bytes per second
+  view.setUint16(32, 1, true); // bytes per frame
+  view.setUint16(34, 8, true); // bits per sample
+  text(36, 'data');
+  view.setUint32(40, frames, true);
+  wav.fill(128, 44); // 8-bit PCM is unsigned: 128 is silence.
+  return wav;
 }
 
 /** A short fade on start, stop and seek so the waveform never jumps (a click). */
@@ -101,15 +131,16 @@ export class WebAudioEngine implements AudioEngine {
     this.#volume.connect(output.node);
   }
 
-  /** The engine for a page: a new `AudioContext` playing through a hidden `<audio>` element. */
+  /** The engine for a page: a new `AudioContext` playing to the speakers, beside a hidden `<audio>` looping silence. */
   static forPage(doc: Document = document): WebAudioEngine {
-    const context = new AudioContext();
-    const out = context.createMediaStreamDestination();
+    // 'playback': a larger buffer, so a busy moment (decoding the next song) doesn't make the sound stutter.
+    const context = new AudioContext({ latencyHint: 'playback' });
     const element = doc.createElement('audio');
-    element.srcObject = out.stream;
+    element.src = URL.createObjectURL(new Blob([silentWav(SILENCE_SECONDS, 8000)], { type: 'audio/wav' }));
+    element.loop = true;
     element.hidden = true;
     doc.body.append(element);
-    return new WebAudioEngine(context, { node: out, play: () => element.play() });
+    return new WebAudioEngine(context, { node: context.destination, play: () => element.play() });
   }
 
   async decode(bytes: ArrayBuffer, song: Song): Promise<DecodedSong> {

@@ -63,6 +63,7 @@ export {
 export {
   RAMP,
   WebAudioEngine,
+  silentWav,
   volumeGain,
   type AudioEngine,
   type DecodedSong,

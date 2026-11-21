@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Song } from '@playlark/core';
-import { type EngineContext, RAMP, WebAudioEngine } from '../src/index.ts';
+import { type EngineContext, RAMP, WebAudioEngine, silentWav } from '../src/index.ts';
 
 /** A gain parameter that records what was scheduled on it. */
 class FakeParam {
@@ -146,5 +146,21 @@ describe('the Web Audio engine', () => {
     expect(context.gains[1]!.gain.events.at(-1)).toEqual(['ramp', 0, 0.4 + RAMP]);
     old.onended?.();
     expect(events).toEqual([]);
+  });
+});
+
+describe('silentWav', () => {
+  it('is a valid 8-bit mono WAV of silence, long enough for the system to treat it as music', () => {
+    const wav = silentWav(6, 8000);
+    const view = new DataView(wav.buffer);
+    const text = (at: number) => String.fromCharCode(...wav.subarray(at, at + 4));
+    expect([text(0), text(8), text(12), text(36)]).toEqual(['RIFF', 'WAVE', 'fmt ', 'data']);
+    expect(view.getUint32(4, true)).toBe(wav.length - 8);
+    expect(view.getUint16(22, true)).toBe(1);
+    expect(view.getUint32(24, true)).toBe(8000);
+    expect(view.getUint16(34, true)).toBe(8);
+    expect(view.getUint32(40, true)).toBe(48_000);
+    expect(wav.length).toBe(44 + 48_000);
+    expect(wav.subarray(44).every((b) => b === 128)).toBe(true);
   });
 });
