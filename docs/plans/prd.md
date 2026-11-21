@@ -166,12 +166,12 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 - The graph is: buffer source → the song's own gain (its ReplayGain level, §8.6, shaped by the crossfade curve while it fades, §8.7) → volume gain → the context's own output. Beside it, one hidden `<audio>` element loops 6 s of silence: that element is what the system sees as playing, which is what Media Session (§15) needs. The sound doesn't go through it: Chromium plays a MediaStream through a buffer that changes speed to catch up after a stall, which puts songs slightly out of tune.
 - Seeking restarts the buffer at the new position (no gap in the UI, a 10 ms ramp to avoid a click). Pause and resume use `AudioContext.suspend()`/`resume()`.
 - A song that can't be decoded (§12) is skipped with "Skipped <title>: can't play this format here." Three failures in a row stop playback with "Playback stopped: 3 songs in a row couldn't be played."
-- Volume: 0–100 % on a perceptual curve, remembered (§19). ⌘↑/⌘↓ change it by 10 %.
+- Volume: 0–100 % on a perceptual curve, remembered (§19). ⌘→/⌘← change it by 10 %, the way the volume slider runs.
 
 ### §8.4 The queue
 
 - The queue panel (⌥⌘U) lists the current song and **Up Next**. Up Next rows can be dragged to reorder, removed (Delete, or the row's ×), and played (double-click jumps there). **Clear** empties Up Next. History isn't kept in 1.0.
-- **Next** (⌘→) goes to the next entry. **Previous** (⌘←) restarts the song if more than 3 s in, else goes to the previous entry (the first entry restarts).
+- **Next** (⌘↓) goes to the next entry. **Previous** (⌘↑) restarts the song if more than 3 s in, else goes to the previous entry (the first entry restarts).
 - At the end of the queue with repeat off, playback stops; the last song stays shown, paused at 0:00.
 - The queue (paths), the current entry, the position, shuffle and loop are saved every 5 s while playing and on every change (desktop: `queue.json` in the app's data folder, beside the library index; browser and NAS client: the browser's storage, per device). A saved queue belongs to one music folder and is ignored for any other, and restored paused on start. Entries whose files are gone are dropped with "2 songs in your queue are gone and were removed."
 
@@ -314,9 +314,9 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 | Song     | Add to Playlist…                                | —                           |
 | Song     | Go to Album / Go to Artist / Go to Current Song | — / — / ⌘L                  |
 | Controls | Play / Pause                                    | Space (outside text fields) |
-| Controls | Next / Previous                                 | ⌘→ / ⌘←                     |
+| Controls | Next / Previous                                 | ⌘↓ / ⌘↑                     |
 | Controls | Seek Forward / Back 10 s                        | ⌥⌘→ / ⌥⌘←                   |
-| Controls | Volume Up / Down                                | ⌘↑ / ⌘↓                     |
+| Controls | Volume Up / Down                                | ⌘→ / ⌘←                     |
 | Controls | Shuffle                                         | ⌘S                          |
 | Controls | Loop This Song / Loop Queue                     | ⌥⌘R / ⌥⇧⌘R                  |
 | View     | Songs / Albums / Artists / Folders              | ⌘1 / ⌘2 / ⌘3 / ⌘4           |

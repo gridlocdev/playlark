@@ -44,12 +44,12 @@ Favourites, Recently Added and Most Played are under **Collections** in the side
 | Action                                         | macOS    | Windows / Linux      |
 | ---------------------------------------------- | -------- | -------------------- |
 | Play or pause                                  | **␣**    | **Space**            |
-| Next song                                      | **⌘→**   | **Ctrl+Right**       |
-| Previous song (or back to the start after 3 s) | **⌘←**   | **Ctrl+Left**        |
+| Next song                                      | **⌘↓**   | **Ctrl+Down**        |
+| Previous song (or back to the start after 3 s) | **⌘↑**   | **Ctrl+Up**          |
 | Skip forward 10 s                              | **⌥⌘→**  | **Ctrl+Alt+Right**   |
 | Skip back 10 s                                 | **⌥⌘←**  | **Ctrl+Alt+Left**    |
-| Volume up                                      | **⌘↑**   | **Ctrl+Up**          |
-| Volume down                                    | **⌘↓**   | **Ctrl+Down**        |
+| Volume up                                      | **⌘→**   | **Ctrl+Right**       |
+| Volume down                                    | **⌘←**   | **Ctrl+Left**        |
 | Shuffle on or off                              | **⌘S**   | **Ctrl+S**           |
 | Loop this song on or off                       | **⌥⌘R**  | **Ctrl+Alt+R**       |
 | Loop the queue on or off                       | **⌥⇧⌘R** | **Ctrl+Alt+Shift+R** |

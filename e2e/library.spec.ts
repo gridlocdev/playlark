@@ -60,8 +60,17 @@ test.describe('Playing songs', () => {
     await page.keyboard.press('Space');
     // The song is 2 s long: Lantern Walk follows when it ends.
     await expect(bar).toContainText('Lantern Walk', { timeout: 10_000 });
-    await page.keyboard.press('ControlOrMeta+ArrowRight');
+    await page.keyboard.press('ControlOrMeta+ArrowDown');
     await expect(bar).toContainText('Static Bloom');
+    // ⌘↑ goes back a song; ⌘← and ⌘→ move the volume, the way its slider runs.
+    await page.keyboard.press('ControlOrMeta+ArrowUp');
+    await expect(bar).toContainText('Lantern Walk');
+    const volume = bar.getByRole('slider', { name: 'Volume' });
+    const before = Number(await volume.inputValue());
+    await page.keyboard.press('ControlOrMeta+ArrowLeft');
+    await expect.poll(async () => Number(await volume.inputValue())).toBeLessThan(before);
+    await page.keyboard.press('ControlOrMeta+ArrowRight');
+    await expect.poll(async () => Number(await volume.inputValue())).toBeCloseTo(before);
     expect(errors).toEqual([]);
   });
 

@@ -77,7 +77,7 @@ test.describe('Play Next and Add to Queue', () => {
     await page.getByRole('menu').getByRole('menuitem', { name: 'Play Next' }).click();
     await expect(page.locator('.pl-status')).toContainText('Playing next: Salt Air');
     await expect.poll(() => upNextTitles(page)).toEqual(['Salt Air', 'Night Bus']);
-    await page.keyboard.press('ControlOrMeta+ArrowRight');
+    await page.keyboard.press('ControlOrMeta+ArrowDown');
     await expect(nowPlaying(page)).toContainText('Salt Air');
     expect(errors).toEqual([]);
   });

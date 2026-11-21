@@ -38,7 +38,7 @@ export type PlayState = 'stopped' | 'loading' | 'playing' | 'paused';
 export const MAX_FAILURES = 3;
 /** ⌥⌘→ / ⌥⌘← move this many seconds (PRD §14). */
 export const SEEK_STEP = 10;
-/** ⌘↑ / ⌘↓ change the volume by this much (PRD §8.3). */
+/** ⌘→ / ⌘← change the volume by this much (PRD §8.3). */
 export const VOLUME_STEP = 0.1;
 /** The next song is decoded once this many seconds are left in the playing one (PRD §8.6). */
 export const PRELOAD_AHEAD = 30;
