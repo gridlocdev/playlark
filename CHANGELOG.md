@@ -24,3 +24,4 @@
 - On a phone: a bottom tab bar, a mini player that opens full screen, tap to play, and Add to Home Screen for an app that opens offline.
 - A Docker image and `compose.example.yaml` for running the server on a NAS.
 - An app icon.
+- The `playlark` command: list songs, albums and artists, search, check for missing tags, missing covers, duplicates and unreadable files, edit tags, make and change playlists, and play from a terminal, with `--json` output for scripts and an agent skill file.

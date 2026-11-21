@@ -38,6 +38,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
  packages/node-files  Node only: folder listings confined to the folder, media replies with Range, atomic writes,
                       playlist writes under a lock file with versions, the trash
  apps/server          node:http: the static client and /api; scans and watches the folder itself (ServerLibrary)
+ apps/cli             the playlark command: the same scan, index, stats and writers, from a terminal
  apps/desktop         Electron main + sandboxed preload; loads the apps/web build from app://playlark/
 ```
 
@@ -104,6 +105,14 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 - A request whose `Host` header isn't allowed gets 421. The server has no sign-in, so it listens on loopback unless it is started with `--no-auth`.
 - The page (`connectServer` in `sources.ts`) reads the index from the server and shows covers from `/api/covers`. It keeps the queue in the browser and sends stats as changes. When the event stream reports a new ETag, it rescans, starting from the songs the server read.
 - `apps/web/src/sw.ts` is the phone app's service worker, built as `sw.js` with the build's file list written in. It keeps the app's own files at install and answers from them only while offline; it never handles `/api`. Only a server's page registers it.
+
+## CLI (`apps/cli`)
+
+- `run.ts` parses the line (`args.ts`, node:util `parseArgs`), finds the folder (`folder.ts`: `--dir`, `PLAYLARK_DIR`, else the desktop app's `folder.json`) and runs one command. Each command gives lines for people and an object for `--json`; errors are `CliError`s with exit 1, and conflicts (`FolderError` `changed`, `deleted`, `exists`) exit 2.
+- Every command rescans first (`library.ts`), reusing every file whose size and time haven't changed. For the desktop app's own folder the index is its `library.json`; another folder's index goes in `cli/<hash>/` in the same data folder. Moved songs keep their stats in the shared `stats.json`, written under its lock file.
+- Playlists and tags go through the same `node-files` writers as the desktop app and the server, with the version or size and time read in this run, so a change made elsewhere in between is a conflict.
+- `play.ts` plays through afplay, ffplay or paplay, one song at a time. The `Player` interface is passed in, so the tests run with one that makes no sound.
+- `skill/SKILL.md` teaches an agent the commands and their JSON.
 
 ## Desktop (`apps/desktop`)
 

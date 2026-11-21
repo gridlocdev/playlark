@@ -19,6 +19,7 @@ just setup   # corepack enable, then pnpm install
 | `just run-web-nas` | The web client with hot reload, its API proxied to `just run-server` |
 | `just run-desktop` | The desktop app (builds the web client first) |
 | `just run-desktop-headless` | The desktop app with `--headless`: no window, Dock icon, sound or dialog, on `./.headless-data`, playing the fixtures, with DevTools on port 9348 |
+| `just cli <args>` | The `playlark` command, from source: `just cli --dir ~/Music check` |
 | `just drive <steps>` | The web client in a headless browser, for a quick look: `just drive "cmd:Show Queue" shot:queue` |
 
 The desktop app takes these settings from the environment:

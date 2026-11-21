@@ -48,6 +48,11 @@ run-server dir="": build-web
 run-web-nas:
     pnpm --filter @playlark/web dev
 
+# The playlark command on a music folder: just cli --dir ~/Music songs --artist beat (see docs/guides/cli.md).
+[group('run')]
+cli *args:
+    node apps/cli/src/main.ts {{ args }}
+
 # ── Build ─────────────────────────────────────────────────────────────────
 
 # Build everything: the web client and the desktop app.

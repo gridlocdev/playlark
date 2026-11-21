@@ -98,6 +98,10 @@ The **♥** in a song's row, in the now-playing bar or **Favourite** (⌥⌘F) m
 
 On a screen narrower than 700 px, the sidebar gives way to a tab bar at the bottom: **Songs**, **Albums**, **Artists**, **Playlists** (the collections and playlists) and **Search**. A tap plays a song. The now-playing bar becomes a mini bar with play and next; **⌃** opens a full-screen player with the cover, seek bar, shuffle, repeat, the heart and the queue.
 
+## The command line
+
+`playlark` lists, searches and checks the music folder from a terminal, edits tags, makes and changes playlists, and plays songs one after another through the system's player. It works on the desktop app's folder (or `--dir`) and shares its library, favourites, play counts and trash. `--json` gives every answer as JSON for scripts and agents. See [The command line](guides/cli.md).
+
 ## Opening offline
 
 On a Playlark server, the browser keeps the app's own files (never music), so **Add to Home Screen** gives a full-screen app with its own icon, and it still opens with no network.

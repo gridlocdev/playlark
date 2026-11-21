@@ -15,7 +15,7 @@ just setup
 just run-desktop
 ```
 
-`just run-server` serves the web client and a music folder on http://localhost:8830. To run it on a NAS, see [Running on a NAS](docs/guides/nas.md).
+`just cli songs` runs the `playlark` command on the desktop app's folder ([The command line](docs/guides/cli.md)). `just run-server` serves the web client and a music folder on http://localhost:8830. To run it on a NAS, see [Running on a NAS](docs/guides/nas.md).
 
 ## Docs
 

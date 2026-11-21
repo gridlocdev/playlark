@@ -1,0 +1,22 @@
+{
+  "name": "@playlark/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "The playlark command: list, search, check, tag, make playlists for and play a music folder from a terminal.",
+  "scripts": {
+    "start": "node src/main.ts",
+    "build": "echo 'the CLI runs from source (node type stripping)'"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "bin": {
+    "playlark": "./bin/playlark.mjs"
+  },
+  "dependencies": {
+    "@playlark/core": "workspace:*",
+    "@playlark/node-files": "workspace:*"
+  }
+}

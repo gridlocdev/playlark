@@ -407,6 +407,11 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 - `tags show <path>`, `tags set <path…> --title … --artist …` (same writers and checks, §11).
 - `play <song path | playlist name | search words>`: plays through the system player one song after another (`afplay` on macOS, else `ffplay -nodisp -autoexit` or `paplay` when on `PATH`, else an error naming them). Ctrl-C stops. Not gapless.
 - Exit codes: 0 success, 1 error or usage, 2 conflict. `--json` errors are `{ "ok": false, "error": "...", "exit": n }`.
+- Every command rescans first, reusing every file whose size and time haven't changed (§3.3). The desktop app's own folder uses its `library.json`; any other folder's index is kept in `cli/<hash of the path>/` in the same data folder. Moved songs keep their stats (§10.1).
+- Filters match the way search does: each word must start a word in that field (`--artist beat` finds the Beatles); `--year` is exact.
+- `playlist create` with a name already taken is a conflict (exit 2). Positions count from 1, as `playlist show` numbers them. A song is a path in the music folder, or a path from the current folder to a file inside it.
+- `tags set` takes `--title`, `--artist`, `--album`, `--album-artist`, `--genre`, `--track`, `--track-total`, `--disc`, `--disc-total`, `--year` and `--compilation yes|no`; an empty value takes the tag out. A song changed since the rescan read it is a conflict (exit 2).
+- `--json` answers are one object: `{ "ok": true, … }` with the command's fields, or the error above. While `play` runs, the song names go to standard output (standard error with `--json`).
 - `apps/cli/skill/SKILL.md` teaches an agent to use it.
 
 ## §21 Testing
