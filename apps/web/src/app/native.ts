@@ -1,6 +1,6 @@
 /** What the desktop app's preload script puts on `window.playlarkNative` (PRD §16.1). */
 import type { LibraryFile } from '@playlark/core';
-import type { IndexBridge, NativeMenuItem, PlaylistWriter, TagWriter } from '@playlark/ui';
+import type { Appearance, IndexBridge, NativeMenuItem, PlaylistWriter, TagWriter } from '@playlark/ui';
 
 /** The music folder the desktop app has open. `missing`: the one chosen last time is gone. */
 export interface NativeFolder {
@@ -24,7 +24,16 @@ export interface PlaylarkNative {
     current(): Promise<NativeFolder | null>;
     /** Asks for a folder; null when the user cancelled. */
     choose(): Promise<NativeFolder | null>;
+    /** Opens the user's Music folder (~/Music); null when it isn't there (PRD §16.2). */
+    useMusic(): Promise<NativeFolder | null>;
   };
+  /** `settings.json` in the app's data folder (PRD §19): its text, or null when there is none yet. */
+  readonly settings: {
+    load(): Promise<string | null>;
+    save(text: string): Promise<void>;
+  };
+  /** Light or dark for the window's own parts (menus, title bar, system dialogs). */
+  setAppearance(appearance: Appearance): void;
   /** Every music file in the open folder. Their bytes come from `app://playlark/media/<path>`. */
   listFiles(): Promise<readonly LibraryFile[]>;
   /** The library index and its covers, kept in the app's data folder (PRD §3.2). */

@@ -24,3 +24,4 @@ export {
   type Rect,
   type SavedWindow,
 } from './windowState.ts';
+export { loadSettingsText, saveSettingsText, themeSourceOf, type ThemeSource } from './settingsFile.ts';

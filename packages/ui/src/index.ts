@@ -81,9 +81,12 @@ export {
 } from './player/player.ts';
 export { formatCount, formatTime } from './format.ts';
 export {
+  APPEARANCES,
   DEFAULT_SETTINGS,
   browserSettings,
+  fileSettings,
   parseSettings,
+  type Appearance,
   type Settings,
   type SettingsStorage,
 } from './settings.ts';

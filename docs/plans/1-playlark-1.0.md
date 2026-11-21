@@ -12,4 +12,4 @@ Each slice leaves `just check` green and the app working. Tick a slice when it l
 - [x] **8. Tag editing: Ogg and WAV** (§11.2).
 - [x] **9. NAS server** (§18). API, range streaming, server-side scan and watching, events, playlist and tag writes, stats, `--read-only`, the phone layout and PWA, Docker.
 - [x] **10. CLI** (§20). Commands, `--json`, `play`, the agent skill file.
-- [ ] **11. Settings and release polish** (§19, §14). Settings window, desktop first-start question and folder switching, icon, docs, CHANGELOG, CI.
+- [x] **11. Settings and release polish** (§19, §14). Settings window, desktop first-start question and folder switching, icon, docs, CHANGELOG, CI.

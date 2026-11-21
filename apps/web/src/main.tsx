@@ -11,6 +11,7 @@ import {
   encodePath,
   every,
   browserSettings,
+  fileSettings,
   listenForKeys,
   connectServer,
   urlLibrary,
@@ -19,6 +20,7 @@ import { App } from './app/App.tsx';
 import { buildCommands } from './app/commands.ts';
 import { AppController, type FolderChooser } from './app/controller.ts';
 import { startMediaSession } from './app/mediaSession.ts';
+import { Preferences, applyAppearance } from './app/preferences.ts';
 import { SAVE_STATS_MS } from './app/stats.ts';
 import { nativeBridge, type NativeFolder, type PlaylarkNative } from './app/native.ts';
 import { menuSender, nativeMenu, watchMenuInputs } from './app/nativeMenu.ts';
@@ -71,23 +73,37 @@ function desktopFolders(bridge: PlaylarkNative): FolderChooser {
       const folder = await bridge.folder.choose();
       return folder ? desktopLibrary(bridge, folder) : null;
     },
+    useDefault: async () => {
+      const folder = await bridge.folder.useMusic();
+      return folder ? desktopLibrary(bridge, folder) : null;
+    },
   };
 }
 
-/** The desktop app opens the folder used last (PRD §16.2). */
-async function openDesktopFolder(app: AppController, bridge: PlaylarkNative): Promise<void> {
+/**
+ * The desktop app opens the folder used last (PRD §16.2). At first start, or when that folder is gone, it asks
+ * which folder to play.
+ */
+async function openDesktopFolder(app: AppController, bridge: PlaylarkNative, rescan: boolean): Promise<void> {
   const folder = await bridge.folder.current();
-  if (folder?.missing)
-    app.say(`The music folder ${folder.path} is gone. Open another one.`, { tone: 'error' });
-  else if (folder) await app.open(desktopLibrary(bridge, folder));
+  if (folder && !folder.missing) return app.open(desktopLibrary(bridge, folder), rescan);
+  app.missingFolder.value = folder?.path ?? null;
+  app.show('chooseFolder');
 }
 
 async function start(): Promise<void> {
   const local = native ? null : browserIndexStore();
   const server = local ? await connectServer(local) : null;
   const nas = server?.source ?? null;
-  const settings = browserSettings();
-  const saved = settings.load();
+  const settings = native
+    ? fileSettings(
+        await native.settings.load(),
+        (text) => native.settings.save(text),
+        (e: unknown) => console.warn('Could not keep the settings:', e),
+      )
+    : browserSettings();
+  const prefs = new Preferences(settings);
+  const saved = prefs.value.peek();
   const app = new AppController({
     engine: WebAudioEngine.forPage(),
     version: native?.version ?? pkg.version,
@@ -109,8 +125,14 @@ async function start(): Promise<void> {
       : (server?.index ?? local ?? browserIndexStore()),
     imageUrl: (bytes, mime) => URL.createObjectURL(new Blob([bytes], { type: mime })),
     volume: saved.volume,
-    playback: () => settings.load(),
-    onVolume: (volume) => void settings.save({ ...settings.load(), volume }),
+    playback: () => prefs.value.peek(),
+    onVolume: (volume) => prefs.set({ volume }),
+    preferences: prefs,
+  });
+  effect(() => {
+    const appearance = prefs.value.value.appearance;
+    applyAppearance(document.documentElement, appearance);
+    native?.setAppearance(appearance);
   });
   const catalog = buildCommands(app);
   render(<App app={app} catalog={catalog} />, root);
@@ -157,7 +179,11 @@ async function start(): Promise<void> {
       .register('./sw.js')
       .catch((e: unknown) => console.warn('Playlark won’t open offline:', e));
 
-  const opening = native ? openDesktopFolder(app, native) : nas ? app.open(nas) : Promise.resolve();
+  const opening = native
+    ? openDesktopFolder(app, native, saved.rescanOnStart)
+    : nas
+      ? app.open(nas, saved.rescanOnStart)
+      : Promise.resolve();
   // A server says when its folder changed (§18.2): read it again, reusing what the server read.
   server?.watch(() => void app.rescan());
   await opening.catch((e: unknown) => {

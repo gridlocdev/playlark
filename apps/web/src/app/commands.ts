@@ -13,6 +13,7 @@ import type { View } from './views.ts';
 const DIALOG_COMMAND: Readonly<Partial<Record<DialogKind, string>>> = {
   commands: 'help.commands',
   shortcuts: 'help.shortcuts',
+  settings: 'file.settings',
 };
 
 /** The right-click menu on songs (§14). */
@@ -110,6 +111,21 @@ export function buildCommands(app: AppController): CommandCatalog {
       enabled: () => !!app.source.value && !app.scanning.value,
       run: () => app.rescan(),
     },
+    ...(app.preferences
+      ? [
+          {
+            id: 'file.settings',
+            // On macOS the menu bar puts it in the app menu.
+            title: 'Settings…',
+            description: 'Change the appearance, ReplayGain, crossfade and rescanning at start.',
+            group: 'File',
+            shortcuts: ['mod+,'],
+            keywords: 'preferences options theme dark light replaygain crossfade',
+            global: true,
+            run: toggleDialog('settings'),
+          } satisfies CommandSpec,
+        ]
+      : []),
     {
       id: 'edit.selectAll',
       title: 'Select All',

@@ -17,7 +17,13 @@ contextBridge.exposeInMainWorld('playlarkNative', {
   folder: {
     current: () => ipcRenderer.invoke('playlark:current-folder'),
     choose: () => ipcRenderer.invoke('playlark:choose-folder'),
+    useMusic: () => ipcRenderer.invoke('playlark:use-music-folder'),
   },
+  settings: {
+    load: () => ipcRenderer.invoke('playlark:load-settings'),
+    save: (text: string) => ipcRenderer.invoke('playlark:save-settings', text),
+  },
+  setAppearance: (appearance: string) => ipcRenderer.send('playlark:set-appearance', appearance),
   listFiles: () => ipcRenderer.invoke('playlark:list-files'),
   index: {
     load: () => ipcRenderer.invoke('playlark:load-index'),

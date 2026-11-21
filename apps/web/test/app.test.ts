@@ -72,6 +72,59 @@ describe('the app', () => {
   });
 });
 
+describe('settings and the folder question (PRD §16.2, §19)', () => {
+  it('Settings… opens the Settings window, and again closes it', async () => {
+    const { app, catalog } = await makeApp();
+    catalog.run('file.settings');
+    expect(app.dialog.value).toBe('settings');
+    catalog.run('file.settings');
+    expect(app.dialog.value).toBeNull();
+    app.preferences!.set({ appearance: 'dark', crossfade: 3 });
+    expect(app.preferences!.value.value).toMatchObject({ appearance: 'dark', crossfade: 3 });
+  });
+
+  it('with Rescan on start off, shows the index from last time and doesn’t read the folder', async () => {
+    const index = memoryIndexStore();
+    const library = await fixtureLibrary();
+    const first = await makeApp({ index });
+    await first.app.open(library);
+    const { app } = await makeApp({ index });
+    let listed = 0;
+    await app.open({ ...library, list: () => (listed++, library.list()) }, false);
+    expect(listed).toBe(0);
+    expect(app.songs.value).toHaveLength(7);
+    expect(app.scanned.value).toBe(true);
+  });
+
+  it('with no index yet, reads the folder even with Rescan on start off', async () => {
+    const { app } = await makeApp({ index: memoryIndexStore() });
+    await app.open(await fixtureLibrary(), false);
+    expect(app.songs.value).toHaveLength(7);
+  });
+
+  it('Use Music Folder opens the usual folder and closes the question', async () => {
+    const { app } = await makeApp({
+      folders: { choose: () => Promise.resolve(null), useDefault: () => fixtureLibrary() },
+    });
+    app.missingFolder.value = '/Volumes/Gone/Music';
+    app.show('chooseFolder');
+    await app.openFolder(true);
+    expect(app.dialog.value).toBeNull();
+    expect(app.missingFolder.value).toBeNull();
+    expect(app.songs.value).toHaveLength(7);
+  });
+
+  it('says so when there is no Music folder, and keeps asking', async () => {
+    const { app } = await makeApp({
+      folders: { choose: () => Promise.resolve(null), useDefault: () => Promise.resolve(null) },
+    });
+    app.show('chooseFolder');
+    await app.openFolder(true);
+    expect(app.dialog.value).toBe('chooseFolder');
+    expect(app.notice.value?.text).toMatch(/no Music folder/);
+  });
+});
+
 describe('the index and covers', () => {
   const NOW = new Date('2026-03-04T05:06:07Z');
 

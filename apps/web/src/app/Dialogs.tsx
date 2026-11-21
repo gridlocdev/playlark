@@ -3,6 +3,7 @@ import { Dialog, ListPopup, filterEntries, isMac, type CommandCatalog, type Menu
 import type { AppController } from './controller.ts';
 import { AddToPlaylistDialog, ConflictDialog } from './PlaylistUI.tsx';
 import { shortcutGroups } from './shortcuts.ts';
+import { ChooseFolderDialog, SettingsDialog } from './SettingsUI.tsx';
 import { SongInfoDialog } from './SongInfo.tsx';
 
 /** The open dialog, if any. One at a time. */
@@ -21,6 +22,10 @@ export function Dialogs({ app, catalog }: { readonly app: AppController; readonl
       return <AddToPlaylistDialog app={app} />;
     case 'songInfo':
       return <SongInfoDialog app={app} />;
+    case 'settings':
+      return app.preferences ? <SettingsDialog app={app} prefs={app.preferences} /> : null;
+    case 'chooseFolder':
+      return <ChooseFolderDialog app={app} />;
     case null:
       return null;
   }

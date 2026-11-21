@@ -1,8 +1,20 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { memoryLibrary, type AudioEngine, type DecodedSong, type LibrarySource } from '@playlark/ui';
-import { AppController, buildCommands, type ControllerOptions, type FolderChooser } from '../src/index.ts';
+import {
+  fileSettings,
+  memoryLibrary,
+  type AudioEngine,
+  type DecodedSong,
+  type LibrarySource,
+} from '@playlark/ui';
+import {
+  AppController,
+  Preferences,
+  buildCommands,
+  type ControllerOptions,
+  type FolderChooser,
+} from '../src/index.ts';
 
 export const LIBRARY = fileURLToPath(new URL('../../../e2e/fixtures/basic/', import.meta.url));
 
@@ -68,7 +80,14 @@ export const fixtureFolders: FolderChooser = { choose: () => fixtureLibrary() };
 
 export async function makeApp(options: Partial<ControllerOptions> = {}) {
   const engine = new FakeEngine();
-  const app = new AppController({ engine, version: '0.0.0-test', folders: fixtureFolders, ...options });
+  const preferences = new Preferences(fileSettings(null, () => Promise.resolve(), console.warn));
+  const app = new AppController({
+    engine,
+    version: '0.0.0-test',
+    folders: fixtureFolders,
+    preferences,
+    ...options,
+  });
   const catalog = buildCommands(app);
   return { app, catalog, engine };
 }

@@ -4,7 +4,7 @@ What Playlark does today, named the way the scenarios in `e2e/` name them. The [
 
 ## Opening a music folder
 
-Playlark plays one folder of music and everything under it. The desktop app asks for the folder on first start (**Open Music Folder…**, ⌘O) and remembers it. A Playlark server opens the folder it serves by itself. In Chrome and Edge the browser build opens a folder you pick. MP3, FLAC, M4A (AAC and ALAC), Ogg Vorbis, Opus and WAV files are listed; other files and hidden folders are skipped.
+Playlark plays one folder of music and everything under it. At first start the desktop app asks whether to use your Music folder or choose another, and remembers the answer; when that folder is gone (a drive that isn't plugged in), it asks again, naming it. **Open Music Folder…** (⌘O) switches folders. The last three folders keep their library index, so switching back is quick. A Playlark server opens the folder it serves by itself. In Chrome and Edge the browser build opens a folder you pick. MP3, FLAC, M4A (AAC and ALAC), Ogg Vorbis, Opus and WAV files are listed; other files and hidden folders are skipped.
 
 ## The song list
 
@@ -105,3 +105,7 @@ On a screen narrower than 700 px, the sidebar gives way to a tab bar at the bott
 ## Opening offline
 
 On a Playlark server, the browser keeps the app's own files (never music), so **Add to Home Screen** gives a full-screen app with its own icon, and it still opens with no network.
+
+## Settings
+
+Settings… (⌘, — in the app menu on macOS) sets the appearance (System, Light or Dark), ReplayGain (Off, Track or Album) with a pre-amp, a crossfade of up to 12 seconds, and whether the folder is read again at start. Each change takes effect at once. The desktop app keeps them in `settings.json` in its data folder; the browser keeps them in its own storage.

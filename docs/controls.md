@@ -8,6 +8,7 @@ Every shortcut, on macOS and on Windows and Linux. The Keyboard Shortcuts window
 | --------------------------------- | ------ | --------------- |
 | Open a music folder (desktop app) | **⌘O** | **Ctrl+O**      |
 | Scan the folder again             | **⌘R** | **Ctrl+R**      |
+| Settings                          | **⌘,** | **Ctrl+,**      |
 
 ## Browsing
 

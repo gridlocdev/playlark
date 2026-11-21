@@ -24,12 +24,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   emptyOldTrash,
   indexFolder,
+  type IndexFolder,
   listMusicFiles,
   playlistResult,
   type PlaylistResult,
   renamePlaylistFile,
   tagResult,
   trashPlaylistFile,
+  useLibrary,
   writePlaylistFile,
   writeSongTags,
 } from '@playlark/node-files';
@@ -47,6 +49,7 @@ import {
   isHeadless,
   removeStaleHeadlessProfiles,
 } from './paths.ts';
+import { loadSettingsText, saveSettingsText, themeSourceOf } from './settingsFile.ts';
 import { loadSavedWindow, placeWindow, saveWindow, saveWindowSync, type SavedWindow } from './windowState.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -78,8 +81,7 @@ const paths = dataPaths(process.env, headless, () => {
 if (paths.userData) app.setPath('userData', paths.userData);
 const windowFile = path.join(app.getPath('userData'), 'window-state.json');
 const folderFile = path.join(app.getPath('userData'), 'folder.json');
-/** The library index and covers (PRD §3.2): beside the window state, never in the music folder. */
-const index = indexFolder(app.getPath('userData'));
+const settingsFile = path.join(app.getPath('userData'), 'settings.json');
 
 // A music player starts sound from menu items and media keys, which don't count as a gesture on the page.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -90,6 +92,22 @@ protocol.registerSchemesAsPrivileged([
 let win: BrowserWindow | null = null;
 /** The music folder in use, or null before one is chosen. */
 let musicFolder: string | null = null;
+/**
+ * The open folder's index, covers, queue and stats (PRD §3.2): its own folder in the data folder, never the music
+ * folder. The last few folders keep theirs, so switching back is quick (§16.2).
+ */
+let index: IndexFolder | null = null;
+
+async function useFolder(folder: string | null): Promise<void> {
+  musicFolder = folder;
+  index = folder ? indexFolder(await useLibrary(app.getPath('userData'), folder)) : null;
+}
+
+/** The Music folder Use Music Folder opens. A headless run has none unless a check names one. */
+function usualMusicFolder(): string | null {
+  if (process.env.PLAYLARK_USUAL_MUSIC) return path.resolve(process.env.PLAYLARK_USUAL_MUSIC);
+  return headless ? null : app.getPath('music');
+}
 let lastWindow: SavedWindow | null = null;
 
 /** Only our own page may use the bridge. */
@@ -209,8 +227,25 @@ function registerIpc(): void {
     const folder = await startFolder(process.env, folderFile);
     if (!folder) return null;
     const info = await folderInfo(folder);
-    musicFolder = info.missing ? null : folder;
+    await useFolder(info.missing ? null : folder);
     return info;
+  });
+  ipcMain.handle(Channels.useMusicFolder, async (e): Promise<FolderInfo | null> => {
+    if (!trusted(e)) return refuse();
+    const dir = usualMusicFolder();
+    if (!dir) headlessLog.dialogs.push('Use Music Folder');
+    if (!dir || !(await folderExists(dir))) return null;
+    await saveFolderChoice(folderFile, dir);
+    await useFolder(dir);
+    return folderInfo(dir);
+  });
+  ipcMain.handle(Channels.loadSettings, (e) => (trusted(e) ? loadSettingsText(settingsFile) : refuse()));
+  ipcMain.handle(Channels.saveSettings, (e, text: unknown) =>
+    trusted(e) ? saveSettingsText(settingsFile, text) : refuse(),
+  );
+  ipcMain.on(Channels.setAppearance, (e, appearance: unknown) => {
+    if (!trusted(e) || (appearance !== 'system' && appearance !== 'light' && appearance !== 'dark')) return;
+    nativeTheme.themeSource = appearance;
   });
   ipcMain.handle(Channels.chooseFolder, async (e): Promise<FolderInfo | null> => {
     if (!trusted(e)) return refuse();
@@ -227,7 +262,7 @@ function registerIpc(): void {
     const dir = picked.filePaths[0];
     if (picked.canceled || !dir || !(await folderExists(dir))) return null;
     await saveFolderChoice(folderFile, dir);
-    musicFolder = dir;
+    await useFolder(dir);
     return folderInfo(dir);
   });
   ipcMain.handle(Channels.listFiles, (e) => {
@@ -235,37 +270,38 @@ function registerIpc(): void {
     if (!musicFolder) return Promise.reject(new Error('No music folder is open.'));
     return listMusicFiles(musicFolder);
   });
-  ipcMain.handle(Channels.loadIndex, (e) => (trusted(e) ? index.load() : refuse()));
-  ipcMain.handle(Channels.saveIndex, (e, text: unknown) => {
-    if (!trusted(e) || typeof text !== 'string') return refuse();
-    return index.save(text);
-  });
-  ipcMain.handle(Channels.saveCover, (e, id: unknown, mime: unknown, data: unknown) => {
-    if (!trusted(e) || typeof id !== 'string' || typeof mime !== 'string' || !(data instanceof Uint8Array))
-      return refuse();
-    return index.saveCover(id, mime, data);
-  });
-  ipcMain.handle(Channels.loadQueue, (e) => (trusted(e) ? index.loadQueue() : refuse()));
-  ipcMain.handle(Channels.saveQueue, (e, text: unknown) => {
-    if (!trusted(e) || typeof text !== 'string') return refuse();
-    return index.saveQueue(text);
-  });
-  ipcMain.handle(Channels.loadStats, (e) => (trusted(e) ? index.loadStats() : refuse()));
-  ipcMain.handle(Channels.saveStats, (e, text: unknown) => {
-    if (!trusted(e) || typeof text !== 'string') return refuse();
-    return index.saveStats(text);
-  });
-  ipcMain.handle(Channels.pruneCovers, (e, keep: unknown) => {
-    if (!trusted(e) || !Array.isArray(keep) || !keep.every((k) => typeof k === 'string')) return refuse();
-    return index.pruneCovers(new Set(keep));
-  });
+  // The index calls need a folder open: each folder has its own (§16.2).
+  const withIndex = <T>(e: Electron.IpcMainInvokeEvent, ok: boolean, use: (i: IndexFolder) => Promise<T>) => {
+    if (!trusted(e) || !ok) return refuse();
+    return index ? use(index) : Promise.reject(new Error('No music folder is open.'));
+  };
+  const isText = (v: unknown): v is string => typeof v === 'string';
+  ipcMain.handle(Channels.loadIndex, (e) => withIndex(e, true, (i) => i.load()));
+  ipcMain.handle(Channels.saveIndex, (e, text: unknown) =>
+    withIndex(e, isText(text), (i) => i.save(text as string)),
+  );
+  ipcMain.handle(Channels.saveCover, (e, id: unknown, mime: unknown, data: unknown) =>
+    withIndex(e, isText(id) && isText(mime) && data instanceof Uint8Array, (i) =>
+      i.saveCover(id as string, mime as string, data as Uint8Array),
+    ),
+  );
+  ipcMain.handle(Channels.loadQueue, (e) => withIndex(e, true, (i) => i.loadQueue()));
+  ipcMain.handle(Channels.saveQueue, (e, text: unknown) =>
+    withIndex(e, isText(text), (i) => i.saveQueue(text as string)),
+  );
+  ipcMain.handle(Channels.loadStats, (e) => withIndex(e, true, (i) => i.loadStats()));
+  ipcMain.handle(Channels.saveStats, (e, text: unknown) =>
+    withIndex(e, isText(text), (i) => i.saveStats(text as string)),
+  );
+  ipcMain.handle(Channels.pruneCovers, (e, keep: unknown) =>
+    withIndex(e, Array.isArray(keep) && keep.every(isText), (i) => i.pruneCovers(new Set(keep as string[]))),
+  );
   // Playlist writes (PRD §9.3): refused unless a folder is open; the outcome comes back as a PlaylistResult.
   const inFolder = (write: (root: string) => Promise<string>): Promise<PlaylistResult> => {
     const root = musicFolder;
     if (!root) return Promise.resolve({ ok: false, code: 'failed', message: 'No music folder is open.' });
     return playlistResult(() => write(root));
   };
-  const isText = (v: unknown): v is string => typeof v === 'string';
   ipcMain.handle(Channels.writePlaylist, (e, rel: unknown, data: unknown, base: unknown) => {
     if (!trusted(e) || !isText(rel) || !(data instanceof Uint8Array) || !(base === null || isText(base)))
       return refuse();
@@ -332,11 +368,17 @@ else {
       if (url.host === 'playlark' && url.pathname.startsWith(MEDIA_PREFIX))
         return mediaResponse(musicFolder, url.pathname, req.headers.get('range'));
       if (url.host === 'playlark' && url.pathname.startsWith(COVER_PREFIX))
-        return coverResponse(index, url.pathname);
+        return index ? coverResponse(index, url.pathname) : new Response('Not found', { status: 404 });
       const file = appRequestFile(webRoot, req.url);
       return file ? net.fetch(pathToFileURL(file).toString()) : new Response('Forbidden', { status: 403 });
     });
     registerIpc();
+    // The saved appearance before the window opens, so it starts in the right colours (PRD §19).
+    const saved = await loadSettingsText(settingsFile).catch((e: unknown) => {
+      console.warn('Could not read the settings:', e);
+      return null;
+    });
+    nativeTheme.themeSource = themeSourceOf(saved);
     // Trash older than 30 days goes on start (PRD §11.4).
     await emptyOldTrash(app.getPath('userData'));
     lastWindow = await loadSavedWindow(windowFile);

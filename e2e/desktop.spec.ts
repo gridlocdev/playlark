@@ -1,7 +1,16 @@
 // Desktop smoke test: the built Electron app starts headless (no window, Dock icon, sound or system dialog) on a
 // throwaway profile, lists the fixture folder and plays it. `just e2e-desktop` builds it first. The throwaway
 // profile matters: the app must never read the owner's settings, window state or music folder.
-import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -108,10 +117,15 @@ test.describe('Desktop app', () => {
       const window = await app.firstWindow();
       const errors = watchErrors(window);
       await waitForApp(window);
+      // One index per folder, in `libraries/<key>/`.
+      const library = () => {
+        const all = path.join(profile, 'libraries');
+        return existsSync(all) ? readdirSync(all).map((key) => path.join(all, key)) : [];
+      };
       await expect
-        .poll(() => existsSync(path.join(profile, 'library.json')), 'the index is saved')
+        .poll(() => library().some((dir) => existsSync(path.join(dir, 'library.json'))), 'the index is saved')
         .toBe(true);
-      expect(readdirSync(path.join(profile, 'covers'))).toHaveLength(1);
+      expect(readdirSync(path.join(library()[0]!, 'covers'))).toHaveLength(1);
       await songs(window)
         .getByRole('row', { name: /Framed/ })
         .dblclick();
@@ -300,6 +314,82 @@ test.describe('Editing tags', () => {
       await expect(window.locator('.pl-status')).toContainText('Undo Edit Tags');
       await expect(songs(window).getByRole('row', { name: /Salt Air/ })).toBeVisible();
       await expect(songs(window).getByRole('row', { name: /Sea Salt/ })).toHaveCount(0);
+      expect(errors).toEqual([]);
+    } finally {
+      await closeApp(app);
+      rmSync(temp, { recursive: true, force: true });
+    }
+  });
+});
+
+test.describe('Opening a music folder', () => {
+  /** Starts the app with no folder given, so it asks; PLAYLARK_USUAL_MUSIC stands in for ~/Music. */
+  async function launch(profile: string, usual?: string) {
+    const { PLAYLARK_MUSIC: _music, ...inherited } = process.env;
+    return electron.launch({
+      cwd: DESKTOP,
+      args: ['out/main.js'],
+      env: {
+        ...inherited,
+        PLAYLARK_HEADLESS: '1',
+        PLAYLARK_USER_DATA: profile,
+        ...(usual ? { PLAYLARK_USUAL_MUSIC: usual } : {}),
+      },
+    });
+  }
+
+  test('asks at first start, opens the Music folder, and keeps the settings in settings.json', async () => {
+    const temp = realpathSync(mkdtempSync(path.join(tmpdir(), 'playlark-e2e-')));
+    const profile = path.join(temp, 'profile');
+    const app = await launch(profile, DATA);
+    try {
+      const window = await app.firstWindow();
+      const errors = watchErrors(window);
+      const question = window.getByRole('dialog', { name: 'Choose Your Music' });
+      await expect(question).toBeVisible();
+      // Choose Folder… shows the system's picker: in a headless run it is recorded and cancelled.
+      await question.getByRole('button', { name: 'Choose Folder…' }).click();
+      await expect.poll(() => headlessLog(app)).toEqual(['Open Music Folder']);
+      await expect(question).toBeVisible();
+      await question.getByRole('button', { name: 'Use Music Folder' }).click();
+      await expect(question).toBeHidden();
+      await expect.poll(() => titles(window)).toHaveLength(7);
+      expect(JSON.parse(readFileSync(path.join(profile, 'folder.json'), 'utf8'))).toEqual({ folder: DATA });
+
+      await runCommand(window, 'Settings');
+      await window.getByRole('dialog', { name: 'Settings' }).getByLabel('Appearance').selectOption('dark');
+      await expect
+        .poll(() => app.evaluate(({ nativeTheme }) => nativeTheme.themeSource), 'menus and title bar follow')
+        .toBe('dark');
+      await expect
+        .poll(() => {
+          const file = path.join(profile, 'settings.json');
+          return existsSync(file) ? readFileSync(file, 'utf8') : '';
+        })
+        .toContain('"appearance": "dark"');
+      expect(errors).toEqual([]);
+    } finally {
+      await closeApp(app);
+      rmSync(temp, { recursive: true, force: true });
+    }
+  });
+
+  test('names the remembered folder when it is gone, and a headless run has no Music folder of its own', async () => {
+    const temp = realpathSync(mkdtempSync(path.join(tmpdir(), 'playlark-e2e-')));
+    const profile = path.join(temp, 'profile');
+    mkdirSync(profile, { recursive: true });
+    const gone = path.join(temp, 'Unplugged Drive', 'Music');
+    writeFileSync(path.join(profile, 'folder.json'), JSON.stringify({ folder: gone }));
+    const app = await launch(profile);
+    try {
+      const window = await app.firstWindow();
+      const errors = watchErrors(window);
+      const question = window.getByRole('dialog', { name: 'Music Folder Not Found' });
+      await expect(question).toContainText(gone);
+      await question.getByRole('button', { name: 'Use Music Folder' }).click();
+      await expect.poll(() => headlessLog(app)).toEqual(['Use Music Folder']);
+      await expect(window.getByText('There is no Music folder.').first()).toBeVisible();
+      await expect(question).toBeVisible();
       expect(errors).toEqual([]);
     } finally {
       await closeApp(app);

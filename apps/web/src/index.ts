@@ -20,6 +20,7 @@ export { UNDO_LIMIT, UndoStack, type UndoStep } from './app/undo.ts';
 export { PLAYLIST_SONG_MENU, SONG_MENU, buildCommands } from './app/commands.ts';
 export { SAVE_STATS_MS, Stats } from './app/stats.ts';
 export { cursorStep } from './app/cursor.ts';
+export { Preferences, applyAppearance } from './app/preferences.ts';
 export { menuSender, nativeMenu, watchMenuInputs } from './app/nativeMenu.ts';
 export { shortcutGroups, type ShortcutGroup, type ShortcutLine } from './app/shortcuts.ts';
 export {

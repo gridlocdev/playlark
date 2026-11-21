@@ -35,7 +35,7 @@ Playlark is a music player for one person's own library: a folder of MP3, FLAC, 
 ### §3.2 The index
 
 - Scanning produces the index: one entry per song with its path relative to the music folder (always `/` separators), size, modified time, the tags read (§4), duration, format, and a cover reference.
-- The index is a cache, not data. It lives in the app's data folder (desktop: `library.json` in Electron's userData; NAS: the server's data folder; browser: IndexedDB), never in the music folder. A missing, corrupt or newer-format index is thrown away and rebuilt with no question asked.
+- The index is a cache, not data. It lives in the app's data folder (desktop: `libraries/<key>/library.json` in Electron's userData, one per music folder (§16.2); NAS: the server's data folder; browser: IndexedDB), never in the music folder. A missing, corrupt or newer-format index is thrown away and rebuilt with no question asked.
 - Cover images found during scanning are stored once per distinct image (named by SHA-256 of the bytes) in `covers/` beside the index. Images no longer used by any song are deleted after a scan.
 - Format: JSON `{ "format": 1, "root": "<absolute path or folder name>", "scannedAt": "<ISO>", "songs": [...] }`, written atomically.
 
@@ -347,6 +347,8 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 ### §16.2 The folder
 
 - First start asks before showing anything: **Use Music folder** (`~/Music`) or **Choose Folder…**. The choice is remembered in `folder.json` in the app's data folder. **Open Music Folder…** (⌘O) switches libraries (stopping playback and starting a fresh index for that folder; one index per folder is kept, up to 3).
+- Each folder's index, covers, queue and stats are in `libraries/<first 16 hex digits of the SHA-256 of the folder's real path>/` in the data folder. Opening a folder marks its index as used; beyond the 3 used last, the oldest are deleted, never the remembered folder's. The CLI uses the same place for the same folder.
+- The question is a dialog in the page, not a system one. **Choose Folder…** then shows the system's folder picker (skipped and logged in a headless run); **Use Music folder** with no `~/Music` says so and asks again. A headless run has no Music folder unless `PLAYLARK_USUAL_MUSIC` names one.
 - A remembered folder that's gone (an unplugged drive) asks the same question, naming it; nothing is created in its place.
 
 ### §16.3 Headless mode
@@ -396,6 +398,9 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 
 - Settings window (⌘,): Appearance (System, Light, Dark), ReplayGain (Off, Track, Album) and pre-amp, Crossfade (Off, 1–12 s), Rescan on start (on).
 - Stored in `settings.json` in the app's data folder (desktop), the browser's storage (web and NAS client). Volume is remembered the same way.
+- Each change takes effect at once and is saved; there is no OK button. ReplayGain, pre-amp and crossfade apply from the next song. Pre-amp is off while ReplayGain is Off. Settings… is in the File group of the command list, which the macOS menu bar shows in the app menu.
+- Appearance also sets Electron's `nativeTheme.themeSource`, read from `settings.json` before the window opens, so menus and the title bar match.
+- With Rescan on start off, the index from last time is shown and the folder isn't read until Rescan (⌘R); a folder with no index yet is read anyway.
 
 ## §20 CLI
 
@@ -407,7 +412,7 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 - `tags show <path>`, `tags set <path…> --title … --artist …` (same writers and checks, §11).
 - `play <song path | playlist name | search words>`: plays through the system player one song after another (`afplay` on macOS, else `ffplay -nodisp -autoexit` or `paplay` when on `PATH`, else an error naming them). Ctrl-C stops. Not gapless.
 - Exit codes: 0 success, 1 error or usage, 2 conflict. `--json` errors are `{ "ok": false, "error": "...", "exit": n }`.
-- Every command rescans first, reusing every file whose size and time haven't changed (§3.3). The desktop app's own folder uses its `library.json`; any other folder's index is kept in `cli/<hash of the path>/` in the same data folder. Moved songs keep their stats (§10.1).
+- Every command rescans first, reusing every file whose size and time haven't changed (§3.3). Each folder's index and stats are where the desktop app keeps them (§16.2), so the CLI and the app share them for every folder. Moved songs keep their stats (§10.1).
 - Filters match the way search does: each word must start a word in that field (`--artist beat` finds the Beatles); `--year` is exact.
 - `playlist create` with a name already taken is a conflict (exit 2). Positions count from 1, as `playlist show` numbers them. A song is a path in the music folder, or a path from the current folder to a file inside it.
 - `tags set` takes `--title`, `--artist`, `--album`, `--album-artist`, `--genre`, `--track`, `--track-total`, `--disc`, `--disc-total`, `--year` and `--compilation yes|no`; an empty value takes the tag out. A song changed since the rescan read it is a conflict (exit 2).

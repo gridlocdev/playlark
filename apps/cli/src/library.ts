@@ -3,7 +3,6 @@
  * changed (PRD §3.3), saves the index the desktop app reads, and keeps favourites and play counts with songs
  * that moved (§10.1).
  */
-import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import {
   type FolderStats,
@@ -28,6 +27,7 @@ import {
   readTextFile,
   withLockFile,
   writeAtomic,
+  useLibrary,
 } from '@playlark/node-files';
 import { CliError } from './errors.ts';
 import type { Where } from './folder.ts';
@@ -40,11 +40,10 @@ export interface Loaded {
   readonly songByPath: ReadonlyMap<string, Song>;
 }
 
-/** Moves stats with moved songs and dates new ones, in the shared `stats.json`, under its lock file. */
+/** Moves stats with moved songs and dates new ones, in the folder's `stats.json`, under its lock file. */
 async function updateStats(where: Where, before: readonly Song[], songs: readonly Song[], now: Date) {
-  const file = path.join(where.data, STATS_FILE);
+  const file = path.join(where.indexDir, STATS_FILE);
   const moves = findMoves(before, songs);
-  await mkdir(where.data, { recursive: true });
   await withLockFile(file, async () => {
     const { text } = await readTextFile(file);
     const all = text === null ? new Map<string, FolderStats>() : parseStatsFile(text);
@@ -58,6 +57,7 @@ async function updateStats(where: Where, before: readonly Song[], songs: readonl
 }
 
 export async function loadLibrary(where: Where, now = new Date()): Promise<Loaded> {
+  await useLibrary(where.data, where.folder, where.remembered ? [where.remembered] : [], now);
   const store = indexFolder(where.indexDir);
   const saved = await store.load();
   const previous = saved === null ? null : parseIndex(saved, where.name);

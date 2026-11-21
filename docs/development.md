@@ -34,6 +34,8 @@ The server takes `--dir`, `--port`, `--host` and `--no-auth`, or `PLAYLARK_MUSIC
 
 ## Checking your work
 
+GitHub Actions (`.github/workflows/check.yml`) runs `pnpm check` and the browser scenarios on every push to `main` and every pull request. The desktop scenarios run locally only.
+
 ```bash
 just check        # everything CI runs: format, lint, typecheck, tests, build
 just test         # the tests once (pass a file or -t "name" to narrow them)

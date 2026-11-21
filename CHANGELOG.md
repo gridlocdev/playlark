@@ -24,4 +24,6 @@
 - On a phone: a bottom tab bar, a mini player that opens full screen, tap to play, and Add to Home Screen for an app that opens offline.
 - A Docker image and `compose.example.yaml` for running the server on a NAS.
 - An app icon.
+- Settings (⌘,): Light, Dark or System appearance, ReplayGain mode and pre-amp, crossfade, and Rescan on start.
+- The desktop app asks at first start whether to use your Music folder or choose one, and asks again, naming it, when that folder is gone. The last three folders keep their library index, so switching back with Open Music Folder… is quick.
 - The `playlark` command: list songs, albums and artists, search, check for missing tags, missing covers, duplicates and unreadable files, edit tags, make and change playlists, and play from a terminal, with `--json` output for scripts and an agent skill file.

@@ -18,18 +18,12 @@ import {
   type Song,
   type SongColumn,
 } from '@playlark/core';
-import {
-  Player,
-  debounce,
-  every,
-  type AudioEngine,
-  type IndexStore,
-  type LibrarySource,
-  type PlaybackSettings,
-} from '@playlark/ui';
+import { Player, debounce, every, type IndexStore, type LibrarySource } from '@playlark/ui';
 import { Covers } from './covers.ts';
 import { loadIndexSongs, saveIndexSongs } from './libraryIndex.ts';
 import { Notices, type Notice } from './notices.ts';
+import type { ControllerOptions, DialogKind, FolderChooser } from './options.ts';
+import type { Preferences } from './preferences.ts';
 import { MISSING, Playlists } from './playlists.ts';
 import { QueueKeeper, goneNotice } from './queueKeeper.ts';
 import { NO_SELECTION, keep, only, selectedRows, type Selection } from './selection.ts';
@@ -49,53 +43,26 @@ import {
   type View,
 } from './views.ts';
 
-export type DialogKind = 'commands' | 'shortcuts' | 'unreadable' | 'addToPlaylist' | 'songInfo';
-
 /** How often the song list takes in what a scan has found so far (PRD §3.3). */
 export const SCAN_UPDATE_MS = 500;
 /** How long typing in the search field pauses before the results update (§6.4). */
 export const SEARCH_IDLE_MS = 100;
 
 export type { SongOrder } from './viewRows.ts';
+export type { ControllerOptions, DialogKind, FolderChooser } from './options.ts';
 
 /** A playlist row's key: its entry's place and its song, since a playlist may hold a song twice (§9.2). */
 const entryKey = (index: number, path: string) => `${index}\0${path}`;
 /** The song path a row key names. */
 export const keyPath = (key: string): string => key.slice(key.indexOf('\0') + 1);
 
-/** Where the folder comes from: the user picks one (desktop, Chrome), or it is fixed (NAS). */
-export interface FolderChooser {
-  /** Asks for a folder; null when the user cancelled. */
-  choose(): Promise<LibrarySource | null>;
-}
-
-export interface ControllerOptions {
-  readonly engine: AudioEngine;
-  readonly version: string;
-  /** Absent when the folder can't be changed here (the NAS) or can't be opened at all (§17). */
-  readonly folders?: FolderChooser;
-  /** Why no folder can be opened here, shown in place of the song list (§17). */
-  readonly cannotOpen?: string;
-  readonly volume?: number;
-  readonly onVolume?: (volume: number) => void;
-  /** ReplayGain and crossfade (§8.6, §8.7). */
-  readonly playback?: () => PlaybackSettings;
-  /** A seed for each shuffle; tests pin it. */
-  readonly seed?: () => number;
-  /** Where the index and its covers are kept between runs (§3.2). Absent: nothing is kept. */
-  readonly index?: IndexStore;
-  /** A URL an `<img>` can show for bytes read from the folder (a folder's cover image). */
-  readonly imageUrl?: (bytes: ArrayBuffer, mime: string) => string;
-  /** Today, for the index's scan date and the stats' times. */
-  readonly now?: () => Date;
-  /** A clock in ms that only goes forward, for how long a song was heard (§10.2); tests pin it. */
-  readonly clock?: () => number;
-}
-
 export class AppController {
   readonly version: string;
   readonly folders: FolderChooser | undefined;
   readonly cannotOpen: string | undefined;
+  readonly preferences: Preferences | undefined;
+  /** The remembered folder that's gone, named in the Choose Folder question (§16.2). */
+  readonly missingFolder = signal<string | null>(null);
   readonly source = signal<LibrarySource | null>(null);
   /** Every song in the folder, sorted (§6.2). */
   readonly songs = signal<readonly Song[]>([]);
@@ -176,6 +143,7 @@ export class AppController {
     this.version = options.version;
     this.folders = options.folders;
     this.cannotOpen = options.cannotOpen;
+    this.preferences = options.preferences;
     this.#index = options.index;
     this.#now = options.now ?? (() => new Date());
     this.player = new Player({
@@ -237,8 +205,11 @@ export class AppController {
     return this.#covers.urlOf(cover);
   }
 
-  /** Opens `source` in place of the folder open now: playback stops and the songs are read again. */
-  async open(source: LibrarySource): Promise<void> {
+  /**
+   * Opens `source` in place of the folder open now: playback stops and the songs are read again. With `rescan`
+   * false (Rescan on start off, §19) the index from last time is all, when there is one.
+   */
+  async open(source: LibrarySource, rescan = true): Promise<void> {
     this.player.stop();
     this.#queueKeeper.reset();
     await this.playlists.settled();
@@ -261,7 +232,8 @@ export class AppController {
       this.#setSongs(saved);
       await this.#restoreQueue(source);
     }
-    await this.rescan();
+    if (rescan || !saved) await this.rescan();
+    else this.scanned.value = true;
   }
 
   async #restoreQueue(source: LibrarySource): Promise<void> {
@@ -353,12 +325,19 @@ export class AppController {
     }
   }
 
-  /** Open Music Folder… (§16.2, §17). */
-  async openFolder(): Promise<void> {
-    if (!this.folders) return;
+  /** Open Music Folder… (§16.2, §17), or the usual music folder from the first-start question. */
+  async openFolder(usual = false): Promise<void> {
+    const folders = this.folders;
+    if (!folders) return;
     try {
-      const source = await this.folders.choose();
-      if (source) await this.open(source);
+      // The open folder's counts and queue are kept first, in its own index.
+      await Promise.all([this.stats.flush(), this.keepQueue()]);
+      const source = usual && folders.useDefault ? await folders.useDefault() : await folders.choose();
+      if (usual && !source) this.say('There is no Music folder. Choose a folder instead.', { tone: 'error' });
+      if (!source) return;
+      if (this.dialog.peek() === 'chooseFolder') this.close();
+      this.missingFolder.value = null;
+      await this.open(source);
     } catch (e) {
       this.say(`Couldn’t open the folder: ${e instanceof Error ? e.message : String(e)}`, { tone: 'error' });
     }

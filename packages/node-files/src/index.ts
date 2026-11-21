@@ -32,3 +32,4 @@ export {
 } from './playlistFiles.ts';
 export { tagResult, writeSongTags, type FileFacts, type TagResult } from './songFiles.ts';
 export { diskByteSource, folderScanSource } from './scanFolder.ts';
+export { LIBRARIES_FOLDER, LIBRARIES_KEPT, libraryDir, useLibrary } from './libraries.ts';

@@ -14,6 +14,7 @@ import type { AppController } from './controller.ts';
 /** Separators go before these ids. */
 const BREAKS = new Set([
   'playlist.new',
+  'file.settings',
   'playlist.play',
   'edit.selectAll',
   'song.goToAlbum',

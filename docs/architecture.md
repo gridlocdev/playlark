@@ -109,7 +109,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 ## CLI (`apps/cli`)
 
 - `run.ts` parses the line (`args.ts`, node:util `parseArgs`), finds the folder (`folder.ts`: `--dir`, `PLAYLARK_DIR`, else the desktop app's `folder.json`) and runs one command. Each command gives lines for people and an object for `--json`; errors are `CliError`s with exit 1, and conflicts (`FolderError` `changed`, `deleted`, `exists`) exit 2.
-- Every command rescans first (`library.ts`), reusing every file whose size and time haven't changed. For the desktop app's own folder the index is its `library.json`; another folder's index goes in `cli/<hash>/` in the same data folder. Moved songs keep their stats in the shared `stats.json`, written under its lock file.
+- Every command rescans first (`library.ts`), reusing every file whose size and time haven't changed. The folder's index is the one the desktop app uses for it (`libraries/<key>/`, from `useLibrary` in `node-files`). Moved songs keep their stats in that folder's `stats.json`, written under its lock file.
 - Playlists and tags go through the same `node-files` writers as the desktop app and the server, with the version or size and time read in this run, so a change made elsewhere in between is a conflict.
 - `play.ts` plays through afplay, ffplay or paplay, one song at a time. The `Player` interface is passed in, so the tests run with one that makes no sound.
 - `skill/SKILL.md` teaches an agent the commands and their JSON.
@@ -117,7 +117,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 ## Desktop (`apps/desktop`)
 
 - `crashGuard.ts` is registered first in the main process. An uncaught error or an unhandled rejection is logged, and the app exits with an error. Electron never shows it in a dialog.
-- The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder, and stored covers at `app://playlark/cover/<sha256>`. The index is `library.json` in the data folder, with the covers in `covers/` beside it the queue in `queue.json` and the favourites and play counts in `stats.json`.
+- The renderer is sandboxed with context isolation. Its only native access is `window.playlarkNative`. It reaches songs at `app://playlark/media/<path>`, which only serves files inside the chosen folder, and stored covers at `app://playlark/cover/<sha256>`. Each music folder has its own `libraries/<key>/` in the data folder (`libraries.ts` in `node-files`, the last 3 kept): `library.json`, `covers/`, `queue.json` and `stats.json`. Settings are `settings.json` in the data folder; the page reads them once at start (`fileSettings`) and writes the whole file on each change.
 - Playlist writes go over IPC to `node-files`: written atomically under `.<name>.lock` if the file is still at the version the page read, renamed, or moved to `trash/<YYYY-MM-DD>/` in the data folder. Trash older than 30 days is deleted on start.
 - Tag saves go over IPC to `writeSongTags` in `node-files`: under the lock file, if the song still has the size and time the page read, the new bytes go to a temp file beside it, are read back and compared, the original moves to the trash, and the temp file is renamed into place.
 - With `--headless`, the app runs with no window, no Dock icon and no sound, on a throwaway profile. It skips native dialogs and records each one in `globalThis.playlarkHeadless`.

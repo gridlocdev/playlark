@@ -15,6 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { parseStatsFile, type Song } from '@playlark/core';
+import { libraryDir } from '@playlark/node-files';
 import {
   choosePlayer,
   desktopDataDir,
@@ -91,17 +92,19 @@ describe('the playlark command (PRD §20)', () => {
     const { code, body } = await json(['scan']);
     expect(code).toBe(0);
     expect(body).toEqual({ ok: true, songs: 7, albums: 4, artists: 4, unreadable: 0 });
-    const indexes = readdirSync(path.join(data, 'cli'));
+    const indexes = readdirSync(path.join(data, 'libraries'));
     expect(indexes).toHaveLength(1);
-    const stats = parseStatsFile(readFileSync(path.join(data, 'stats.json'), 'utf8'))!;
+    const dir = await libraryDir(data, music);
+    const stats = parseStatsFile(readFileSync(path.join(dir, 'stats.json'), 'utf8'))!;
     expect(stats.get('Music')?.get(MP3)?.added).not.toBeNull();
   });
 
-  it('uses the desktop app’s own index when the folder is the one it has open', async () => {
+  it('uses the desktop app’s index for the folder it has open', async () => {
     mkdirSync(data, { recursive: true });
     writeFileSync(path.join(data, 'folder.json'), JSON.stringify({ folder: music }));
     expect((await cli(['scan'], { env: { PLAYLARK_USER_DATA: data } })).code).toBe(0);
-    expect(JSON.parse(readFileSync(path.join(data, 'library.json'), 'utf8'))).toMatchObject({
+    const dir = await libraryDir(data, music);
+    expect(JSON.parse(readFileSync(path.join(dir, 'library.json'), 'utf8'))).toMatchObject({
       root: 'Music',
     });
   });
