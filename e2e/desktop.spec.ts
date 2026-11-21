@@ -82,7 +82,7 @@ test.describe('Desktop app', () => {
         .click({ button: 'right' });
       await window
         .getByRole('menu')
-        .getByRole('menuitem', { name: /^Show in (Finder|File Explorer|Folder)$/ })
+        .getByRole('menuitem', { name: /^Show in (Finder|File Explorer|File Manager)$/ })
         .click();
       await expect
         .poll(() =>

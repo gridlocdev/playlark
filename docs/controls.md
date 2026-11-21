@@ -54,7 +54,7 @@ Favourites, Recently Added and Most Played are under **Collections** in the side
 | Repeat this song on or off                     | **⌥⌘R**  | **Ctrl+Alt+R**       |
 | Repeat the queue on or off                     | **⌥⇧⌘R** | **Ctrl+Alt+Shift+R** |
 
-Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Favourite**, **Song Info…**, **Go to Album** and **Go to Artist**, in the desktop app **Show in Finder** (**Show in File Explorer** on Windows), and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
+Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Favourite**, **Song Info…**, **Go to Album** and **Go to Artist**, in the desktop app **Show in Finder** (**Show in File Explorer** on Windows, **Show in File Manager** on Linux), and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
 
 The media keys on the keyboard, headphones and the lock screen also play, pause and skip.
 

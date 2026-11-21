@@ -78,7 +78,7 @@ function favouriteTargets(app: AppController): string[] {
 function revealTitle(): string {
   const platform = typeof navigator === 'undefined' ? '' : navigator.userAgent;
   if (isMac) return 'Show in Finder';
-  return /Windows/.test(platform) ? 'Show in File Explorer' : 'Show in Folder';
+  return /Windows/.test(platform) ? 'Show in File Explorer' : 'Show in File Manager';
 }
 
 export function buildCommands(app: AppController): CommandCatalog {
