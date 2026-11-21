@@ -20,3 +20,7 @@
 - Favourites (♥, ⌥⌘F) and play counts, with Favourites, Recently Added and Most Played in the sidebar. A play counts after half the song or 4 minutes; a moved song keeps its stats.
 - Song Info (⌘I): see a song's tags, cover and file facts, and in the desktop app edit the tags and cover of MP3, FLAC, M4A, Ogg Vorbis, Opus and WAV files, one song or many at once. Only changed fields are written, each file is checked after writing, the original goes to the trash, and ⌘Z puts the old tags back.
 - The desktop app (Electron), the browser build (Chrome and Edge open a folder directly), and a server that plays a NAS folder in any browser.
+- The NAS server reads its folder itself, keeps the library, covers, favourites and play counts in its data folder, and notices changes to the folder (or reads it every minute with `--poll`). Every device that plays from it shares favourites and play counts, and can edit playlists and tags; `--read-only` turns those writes off.
+- On a phone: a bottom tab bar, a mini player that opens full screen, tap to play, and Add to Home Screen for an app that opens offline.
+- A Docker image and `compose.example.yaml` for running the server on a NAS.
+- An app icon.

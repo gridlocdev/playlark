@@ -1,0 +1,29 @@
+# Copy to compose.yaml on the NAS and change the paths. See docs/guides/nas.md.
+services:
+  playlark:
+    build: .
+    # image: playlark:latest
+    ports:
+      # A reverse proxy on the same machine reaches it here; nothing else does.
+      - '127.0.0.1:8830:8830'
+    environment:
+      # Playlark has no accounts. It only starts on an address other machines reach once you say a reverse
+      # proxy in front of it asks for a login:
+      PLAYLARK_NO_AUTH: '1'
+      # The names you browse to (localhost and IP addresses always work):
+      # PLAYLARK_HOSTS: 'music.nas.lan'
+      # No playlist or tag saves into the music folder:
+      # PLAYLARK_READ_ONLY: '1'
+      # Network shares (SMB, NFS) don't report changes; read the folder every minute instead:
+      # PLAYLARK_POLL: '1'
+    volumes:
+      # The music folder. Add :ro along with PLAYLARK_READ_ONLY to keep it untouched.
+      - /volume1/music:/music
+      # The index, covers, favourites and play counts, and the trash of replaced files.
+      - playlark-data:/data
+    # The container runs as the image's `node` user (uid 1000); match your music share's owner:
+    # user: '1026:100'
+    restart: unless-stopped
+
+volumes:
+  playlark-data:

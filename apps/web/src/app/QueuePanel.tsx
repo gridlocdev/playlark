@@ -60,7 +60,17 @@ export function QueuePanel({
 
   return (
     <aside class="pl-queue" aria-label="Queue">
-      <h2>Queue</h2>
+      <div class="pl-queue-title-row">
+        <h2>Queue</h2>
+        <button
+          type="button"
+          class="pl-icon-button pl-phone-only"
+          aria-label="Close Queue"
+          onClick={() => catalog.run('view.queue')}
+        >
+          <Icon name="x" />
+        </button>
+      </div>
       {now === undefined ? (
         <p class="pl-queue-empty">Nothing is playing. Double-click a song to play the list from there.</p>
       ) : (

@@ -1,0 +1,188 @@
+/*
+ * The narrow layout (PRD §18.5), below 700 px: a bottom tab bar in place of the sidebar, a mini now-playing bar
+ * that opens into a full-screen player, and the queue over the whole screen.
+ */
+.pl-phone-only,
+.pl-tabs {
+  display: none;
+}
+.pl-queue-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 699px) {
+  .pl-phone-only {
+    display: inline-grid;
+  }
+  .pl-app {
+    height: 100dvh;
+  }
+
+  /* Toolbar: back, then search across the rest; the tab bar says where you are. */
+  .pl-toolbar {
+    padding: 0 8px;
+    padding-top: env(safe-area-inset-top);
+    height: calc(var(--pl-toolbar) + env(safe-area-inset-top));
+  }
+  .pl-view-title,
+  .pl-nav-buttons button[aria-label='Forward'] {
+    display: none;
+  }
+  .pl-search {
+    flex: 1;
+    width: auto;
+    height: 34px;
+  }
+  .pl-search input {
+    font-size: 16px; /* smaller text makes iOS zoom into the field */
+  }
+  .pl-sidebar:not(.pl-playlists-page) {
+    display: none;
+  }
+  .pl-playlists-page {
+    width: auto;
+    flex: 1;
+    border: 0;
+  }
+  .pl-playlists-page button {
+    min-height: 44px;
+  }
+
+  /* Bigger rows for fingers, and only the title, artist and time. */
+  .pl-view :is(th, td):not(.pl-col-mark, .pl-col-title, .pl-col-artist, .pl-col-time) {
+    display: none;
+  }
+
+  /* The tab bar */
+  .pl-tabs {
+    flex: none;
+    display: flex;
+    border-top: 1px solid var(--pl-line);
+    background: var(--pl-window);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pl-tabs button {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 50px;
+    padding: 6px 0 4px;
+    border: 0;
+    background: none;
+    color: var(--pl-text-2);
+    font: inherit;
+    font-size: 10px;
+  }
+  .pl-tabs button[aria-current='page'] {
+    color: var(--pl-accent);
+  }
+  .pl-tabs .pl-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .pl-status:empty {
+    display: none;
+  }
+
+  /* The mini bar: cover, song, play, next, open. */
+  .pl-now {
+    display: flex;
+    gap: 8px;
+    height: 60px;
+    padding: 0 8px;
+  }
+  .pl-now-song {
+    flex: 1;
+    min-width: 0;
+  }
+  .pl-now-middle {
+    flex: none;
+  }
+  .pl-now :is(.pl-volume, .pl-now-right > .pl-icon) {
+    display: none;
+  }
+  .pl-now:not(.pl-now-open) :is(.pl-seek, .pl-heart, .pl-now-queue, .pl-now-close) {
+    display: none;
+  }
+  .pl-now:not(.pl-now-open) .pl-transport > :not(.pl-play, [aria-label='Next']) {
+    display: none;
+  }
+
+  /* The full-screen player */
+  .pl-now.pl-now-open {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    flex-direction: column;
+    justify-content: center;
+    gap: 20px;
+    height: auto;
+    padding: calc(16px + env(safe-area-inset-top)) 24px calc(24px + env(safe-area-inset-bottom));
+    border: 0;
+  }
+  .pl-now-open .pl-now-close {
+    position: absolute;
+    top: calc(8px + env(safe-area-inset-top));
+    left: 8px;
+  }
+  .pl-now-open .pl-now-song {
+    flex: none;
+    flex-direction: column;
+    width: 100%;
+    gap: 16px;
+    text-align: center;
+  }
+  .pl-now-open .pl-now-cover {
+    width: min(80vw, 46vh);
+    height: min(80vw, 46vh);
+    border-radius: 12px;
+  }
+  .pl-now-open .pl-now-text {
+    width: 100%;
+    font-size: 18px;
+  }
+  .pl-now-open .pl-now-text > * {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+  .pl-now-open .pl-now-middle {
+    width: 100%;
+    gap: 12px;
+  }
+  .pl-now-open .pl-seek {
+    display: flex;
+  }
+  .pl-now-open .pl-transport {
+    gap: 20px;
+  }
+  .pl-now-open .pl-transport > * {
+    display: inline-grid;
+  }
+  .pl-now-open .pl-transport .pl-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .pl-now-open .pl-play .pl-icon {
+    width: 40px;
+    height: 40px;
+  }
+  .pl-now-open .pl-now-expand {
+    display: none;
+  }
+
+  /* The queue over everything, the player included. */
+  .pl-queue {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    width: auto;
+    border: 0;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}

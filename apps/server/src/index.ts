@@ -9,4 +9,5 @@ export {
   parseHosts,
   parsePort,
 } from './server.ts';
-export type { ServerOptions } from './server.ts';
+export { ServerLibrary, POLL_MS, type LibraryEvent } from './library.ts';
+export type { PlaylarkServer, ServerOptions } from './server.ts';

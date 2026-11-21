@@ -1,10 +1,18 @@
 /**
  * Where the music folder is (PRD §3.1): the UI scans and plays through a `LibrarySource` and never knows whether
- * the files are in memory, in a browser folder, on the NAS or on disk behind the desktop app.
+ * the files are in memory, in a browser folder, on the NAS or on disk behind the desktop app. This is the only
+ * part of the page that reads the network: the NAS server's API (§18.2) is here too.
  */
-import type { ByteSource, LibraryFile, ScanSource, TagEdit } from '@playlark/core';
+import type { ByteSource, FolderStats, LibraryFile, ScanSource, Song, TagEdit } from '@playlark/core';
+import type { IndexStore } from './indexStore.ts';
 import {
   TagCheckError,
+  coverIds,
+  decodeBase64,
+  encodeBase64,
+  parseIndex,
+  parseStatsFile,
+  statsChanges,
   isLibraryPath,
   isPlaylistPath,
   isSkippedName,
@@ -27,6 +35,8 @@ export interface LibrarySource extends ScanSource {
   readonly playlists?: PlaylistWriter;
   /** Writes song tags (PRD §11); absent where they can't be edited (the browser folder, §17). */
   readonly tags?: TagWriter;
+  /** Songs someone else already read (the NAS server's scan, §18.3), so a rescan needn't read them again. */
+  known?(): Promise<readonly Song[] | null>;
 }
 
 /** A song file's size and modified time, as the folder listing gives them. */
@@ -208,6 +218,7 @@ export function urlLibrary(options: {
   readonly where?: string;
   readonly playlists?: PlaylistWriter;
   readonly tags?: TagWriter;
+  readonly known?: () => Promise<readonly Song[] | null>;
   readonly list: () => Promise<readonly LibraryFile[]>;
   /** The URL a song's bytes are served from. */
   readonly mediaUrl: (path: string) => string;
@@ -220,6 +231,7 @@ export function urlLibrary(options: {
     ...(options.where ? { where: options.where } : {}),
     ...(options.playlists ? { playlists: options.playlists } : {}),
     ...(options.tags ? { tags: options.tags } : {}),
+    ...(options.known ? { known: options.known } : {}),
     list: options.list,
     open: (f) => Promise.resolve(rangeSource(options.mediaUrl(f.path), f.size, fetcher)),
     bytes: async (path) => {
@@ -234,24 +246,164 @@ export function urlLibrary(options: {
 /** How long the server may take to say what it shares or to list the folder. */
 export const SERVER_TIMEOUT_MS = 20_000;
 
+/** A connection to the server the page came from. */
+export interface ServerConnection {
+  readonly source: LibrarySource;
+  /** The server's index, covers and stats; the queue stays on this device in `local`. */
+  readonly index: IndexStore;
+  /** Calls `onChange` each time the server's library changes (§18.2), until the returned function is called. */
+  watch(onChange: () => void): () => void;
+}
+
+type Fetcher = typeof fetch;
+
+/** A failed write as the result the dialogs show. */
+const failed = (message: string) => ({ ok: false as const, code: 'failed' as const, message });
+
+/** A write's JSON result, or a failure naming what went wrong when the reply isn't one. */
+async function writeResult<T extends { ok: boolean }>(
+  reply: Promise<Response>,
+): Promise<T | ReturnType<typeof failed>> {
+  let res: Response;
+  try {
+    res = await reply;
+  } catch {
+    return failed('The server can’t be reached.');
+  }
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return failed(`The server said ${res.status}.`);
+  }
+  if (typeof body === 'object' && body !== null && 'ok' in body) return body as T;
+  const message = (body as { message?: unknown } | null)?.message;
+  return failed(typeof message === 'string' ? message : `The server said ${res.status}.`);
+}
+
+const sendJson = (body: unknown): RequestInit => ({
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+
+function serverPlaylists(fetcher: Fetcher): PlaylistWriter {
+  const at = (path: string) => `./api/playlists/${encodePath(path)}`;
+  return {
+    write: (path, bytes, base) =>
+      writeResult<PlaylistResult>(
+        fetcher(at(path), {
+          method: 'PUT',
+          headers: base === null ? { 'If-None-Match': '*' } : { 'If-Match': `"${base}"` },
+          body: bytes as Uint8Array<ArrayBuffer>,
+        }),
+      ),
+    rename: (from, to) => writeResult<PlaylistResult>(fetcher(at(from), sendJson({ to }))),
+    trash: (path, base) =>
+      writeResult<PlaylistResult>(
+        fetcher(at(path), { method: 'DELETE', headers: { 'If-Match': `"${base}"` } }),
+      ),
+  };
+}
+
+function serverTags(fetcher: Fetcher): TagWriter {
+  return {
+    write: async (path, edit, expected) => {
+      const cover = edit.cover ? { mime: edit.cover.mime, data: encodeBase64(edit.cover.data) } : edit.cover;
+      const result = await writeResult<TagWriteResult>(
+        fetcher(
+          './api/tags',
+          sendJson({ path, edit: { ...edit, ...(cover !== undefined ? { cover } : {}) }, expected }),
+        ),
+      );
+      if (!result.ok) return result;
+      // The undo edit's cover comes back as base64.
+      const undo = result.undo as TagEdit & { cover?: { mime: string; type?: number; data: unknown } | null };
+      if (!undo.cover) return result;
+      const data = typeof undo.cover.data === 'string' ? decodeBase64(undo.cover.data) : null;
+      if (!data) return failed('The server sent a cover it can’t put back.');
+      return {
+        ...result,
+        undo: { ...undo, cover: { mime: undo.cover.mime, type: undo.cover.type ?? 3, data } },
+      };
+    },
+  };
+}
+
+/** The server's index and covers, and the stats every device shares; the queue is kept in `local`. */
+function serverIndexStore(
+  fetcher: Fetcher,
+  local: IndexStore,
+  name: string,
+): IndexStore & { known(): Promise<readonly Song[] | null>; readonly etag: string | null } {
+  /** The stats as last read or sent, so a save sends only what changed since (§18.2). */
+  let base: FolderStats = new Map();
+  let etag: string | null = null;
+  /** The covers the server has stored; one a song read here has but the server hasn't yet is kept in `local`. */
+  let stored = new Set<string>();
+  const index = async (root: string) => {
+    const res = await fetcher('./api/library', { signal: AbortSignal.timeout(SERVER_TIMEOUT_MS) });
+    if (res.status !== 200) return null;
+    const read = parseIndex(await res.text(), root);
+    if (read) {
+      etag = res.headers.get('etag');
+      stored = coverIds(read.songs);
+    }
+    return read;
+  };
+  return {
+    get etag() {
+      return etag;
+    },
+    known: async () => (await index(name).catch(() => null))?.songs ?? null,
+    load: index,
+    // The server keeps the index itself.
+    save: () => Promise.resolve(),
+    saveCover: (id, picture) => (stored.has(id) ? Promise.resolve() : local.saveCover(id, picture)),
+    pruneCovers: (keep) => local.pruneCovers(keep),
+    coverUrl: (id) => (stored.has(id) ? Promise.resolve(`./api/covers/${id}`) : local.coverUrl(id)),
+    loadQueue: (root) => local.loadQueue(root),
+    saveQueue: (q) => local.saveQueue(q),
+    loadStats: async (root) => {
+      const res = await fetcher('./api/stats');
+      if (!res.ok) throw new Error(`Couldn’t read the favourites and play counts (${res.status}).`);
+      const all = parseStatsFile(await res.text());
+      if (!all) throw new Error('The favourites and play counts can’t be read.');
+      base = all.get(root) ?? new Map();
+      return base;
+    },
+    saveStats: async (_root, stats) => {
+      const changes = statsChanges(base, stats);
+      if (changes.length === 0) return;
+      const res = await fetcher('./api/stats', sendJson({ changes }));
+      if (!res.ok) throw new Error(`Couldn’t save the favourites and play counts (${res.status}).`);
+      base = stats;
+    },
+  };
+}
+
 /**
  * The folder a Playlark server shares (PRD §18), from the page's own address, or null when the page isn't served
- * by one (a static host, the dev server with no server behind it).
+ * by one (a static host, the dev server with no server behind it). `local` keeps this device's own queue.
  */
-export async function serverLibrary(
-  fetcher: typeof fetch = (input, init) => fetch(input, init),
-): Promise<LibrarySource | null> {
+export async function connectServer(
+  local: IndexStore,
+  fetcher: Fetcher = (input, init) => fetch(input, init),
+): Promise<ServerConnection | null> {
   const timeout = () => AbortSignal.timeout(SERVER_TIMEOUT_MS);
-  let name: unknown;
+  let info: { name?: unknown; readOnly?: unknown };
   try {
     const res = await fetcher('./api/info', { signal: timeout() });
     if (!res.ok || !res.headers.get('content-type')?.includes('json')) return null;
-    name = ((await res.json()) as { name?: unknown }).name;
+    info = (await res.json()) as typeof info;
   } catch {
     return null;
   }
+  const name = info.name;
   if (typeof name !== 'string') return null;
-  return urlLibrary({
+  const index = serverIndexStore(fetcher, local, name);
+  const writable = info.readOnly === false;
+  const source = urlLibrary({
     kind: 'nas',
     name,
     list: async () => {
@@ -259,9 +411,25 @@ export async function serverLibrary(
       if (!res.ok) throw new Error(`The server said ${res.status}.`);
       return ((await res.json()) as { files: LibraryFile[] }).files;
     },
+    known: index.known,
     mediaUrl: (path) => `./api/media/${encodePath(path)}`,
     fetcher,
+    ...(writable ? { playlists: serverPlaylists(fetcher), tags: serverTags(fetcher) } : {}),
   });
+  return {
+    source,
+    index,
+    watch: (onChange) => {
+      if (typeof EventSource === 'undefined') return () => undefined;
+      const events = new EventSource('./api/events');
+      events.addEventListener('library', (e) => {
+        // The first event names the library the page may have read already.
+        const etag = (JSON.parse((e as MessageEvent<string>).data) as { etag?: string }).etag ?? null;
+        if (etag !== index.etag) onChange();
+      });
+      return () => events.close();
+    },
+  };
 }
 
 /** A file in a browser folder as a byte source: `File.slice` reads only the range asked for. */

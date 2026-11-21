@@ -366,20 +366,22 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 
 ### §18.1 Running
 
-- `node apps/server/src/main.ts --dir /music --data /data [--port 8830] [--read-only]`, and a Docker image (`compose.example.yaml` mounts the music folder and a data volume). `--read-only` turns off playlist and tag writes.
+- `node apps/server/src/main.ts --dir /music --data /data [--port 8830] [--read-only] [--poll]`, and a Docker image (`compose.example.yaml` mounts the music folder and a data volume). `--read-only` turns off playlist and tag writes; stats still save. Each option has a `PLAYLARK_*` environment variable. The data folder defaults to `$XDG_DATA_HOME/playlark-server` (`~/.local/share/playlark-server`).
+- With no accounts, the server listens on loopback unless started with `--no-auth`, meant for a reverse proxy that asks for a login.
 - The server checks `Host` against localhost, IP addresses and `PLAYLARK_HOSTS`, like the sibling apps. No accounts.
 
 ### §18.2 API
 
-- `GET /api/library`: the index (ETag; `If-None-Match` → 304). `GET /api/events`: server-sent events for scan progress and library changes.
+- `GET /api/library`: the index (ETag; `If-None-Match` → 304; 204 before the first scan finishes). `GET /api/events`: server-sent events for scan progress and library changes.
 - `GET /api/media/<path>`: the song's bytes with `Range` support, `Content-Type` by format, ETag. `GET /api/covers/<sha256>`: a cover, cached for a year (immutable).
-- Playlists: `GET`/`PUT`/`POST`/`DELETE /api/playlists/<path>` with `If-Match` versions (§9.3). Tags: `POST /api/tags` with edits per path and the size/modified time read; the server runs the same writer and checks (§11.3).
-- Stats: `GET /api/stats`, `POST /api/stats` (favourite toggles and counted plays), shared by every device.
+- Playlists: `PUT /api/playlists/<path>` with `If-None-Match: *` (create) or `If-Match: "<sha256>"` (write over the version read), `POST {to}` (rename), `DELETE` with `If-Match` (to the trash in the data folder) (§9.3). A stale version gets 412, a name taken 409. Tags: `POST /api/tags` with edits per path and the size/modified time read; the server runs the same writer and checks (§11.3).
+- Stats: `GET /api/stats`, `POST /api/stats` with the changes since the device last read or sent (favourite set, plays to add, latest play, added time, removed), shared by every device: plays add up, the latest play wins, the first added time stays.
+- Writes must come from the server's own page (`Origin` matching `Host`, else 403) and JSON bodies must say `application/json` (else 415).
 - Paths are confined to the music folder, symlinks included; `..` is refused.
 
 ### §18.3 Scanning
 
-- The server scans on start, watches the folder (polling every 60 s when `fs.watch` isn't reliable, as on SMB/NFS mounts; `--poll` forces polling) and rescans on changes.
+- The server scans on start (the page shows the server's index, and its own rescans start from it), watches the folder (polling every 60 s when `fs.watch` isn't reliable, as on SMB/NFS mounts; `--poll` forces polling) and rescans on changes.
 
 ### §18.4 Streaming
 
@@ -387,8 +389,8 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 
 ### §18.5 Phone app (PWA)
 
-- A web app manifest and icons, so "Add to Home Screen" gives a full-screen app. A service worker caches the app shell only, never music. Media Session gives lock-screen controls (§15).
-- A narrow layout below 700 px: the sidebar becomes a bottom tab bar (Songs, Albums, Artists, Playlists, Search), the now-playing bar shrinks to a mini bar that opens a full-screen player.
+- A web app manifest and icons, so "Add to Home Screen" gives a full-screen app. A service worker keeps the app's own files at install and answers from them only while offline, never for `/api`; only a server's page registers it. Media Session gives lock-screen controls (§15).
+- A narrow layout below 700 px: the sidebar becomes a bottom tab bar (Songs, Albums, Artists, Playlists, Search; Playlists is a page with the collections and playlists), the now-playing bar shrinks to a mini bar (play, next) that opens a full-screen player, and the queue covers the screen. A tap on a song plays it.
 
 ## §19 Settings
 

@@ -76,7 +76,7 @@ A file that can't be read stays in the list, greyed out. The status bar says how
 
 ## Remembering the library
 
-Playlark keeps what it read from the folder (the desktop app in its data folder, the browser in its own storage) and shows it at once the next time. A rescan then reads only the files that changed, and the list fills in every half second while it runs.
+Playlark keeps what it read from the folder (the desktop app in its data folder, the browser in its own storage, a Playlark server in its data folder) and shows it at once the next time. A server reads its folder itself and notices new, changed and removed files on its own, and every open page picks up the change. A rescan then reads only the files that changed, and the list fills in every half second while it runs.
 
 ## Playlists
 
@@ -84,12 +84,20 @@ Every `.m3u8` and `.m3u` file in the music folder shows under **Playlists** in t
 
 ## Editing playlists
 
-In the desktop app, **New Playlist** (⌘N) makes `Playlists/New Playlist.m3u8` with the selected songs and lets you name it. Drag songs onto a playlist in the sidebar, or use **Add to Playlist…**, to add them at the end. Inside a playlist, drag songs to reorder them and press Delete to take them out. Rename and delete a playlist from its right-click menu. A deleted playlist goes to Playlark's trash in its data folder for 30 days. Every change is saved at once and can be undone with ⌘Z. If another app changes a playlist while you are editing it, Playlark asks whether to keep yours or take theirs.
+In the desktop app and on a Playlark server, **New Playlist** (⌘N) makes `Playlists/New Playlist.m3u8` with the selected songs and lets you name it. Drag songs onto a playlist in the sidebar, or use **Add to Playlist…**, to add them at the end. Inside a playlist, drag songs to reorder them and press Delete to take them out. Rename and delete a playlist from its right-click menu. A deleted playlist goes to Playlark's trash in its data folder for 30 days. Every change is saved at once and can be undone with ⌘Z. If another app changes a playlist while you are editing it, Playlark asks whether to keep yours or take theirs.
 
 ## Favourites and play counts
 
-The **♥** in a song's row, in the now-playing bar or **Favourite** (⌥⌘F) marks the selected songs, or the song playing, as favourites; Undo takes it back. A song counts as played once it has played for half its length or 4 minutes, whichever comes first; seeking past that doesn't count. The Songs table shows the plays and sorts by ♥ and Plays. Under **Collections** in the sidebar, **Favourites**, **Recently Added** (the last 90 days) and **Most Played** (the top 100) list them. A song moved within the folder keeps its stats. The desktop app keeps them in `stats.json` in its data folder, the browser in its own storage; never in the music files.
+The **♥** in a song's row, in the now-playing bar or **Favourite** (⌥⌘F) marks the selected songs, or the song playing, as favourites; Undo takes it back. A song counts as played once it has played for half its length or 4 minutes, whichever comes first; seeking past that doesn't count. The Songs table shows the plays and sorts by ♥ and Plays. Under **Collections** in the sidebar, **Favourites**, **Recently Added** (the last 90 days) and **Most Played** (the top 100) list them. A song moved within the folder keeps its stats. The desktop app keeps them in `stats.json` in its data folder, the browser in its own storage, a Playlark server in its data folder, shared by every device that plays from it (two phones playing at once both count their plays); never in the music files.
 
 ## Editing tags
 
-**Song Info…** (⌘I, or right-click) shows the selected songs' tags, their cover and, for one song, its format, length, sample rate, bit rate, size and path. In the desktop app you can change the title, artist, album, album artist, track and disc numbers, year, genre, compilation flag and cover (Choose Image…, Paste or Remove; JPEG or PNG). With several songs selected, fields that differ show "Mixed", and only the fields you change are written; the title and track number can be changed one song at a time. MP3, FLAC, M4A, Ogg Vorbis, Opus and WAV files can be edited (an Ogg file with more than one stream is left alone). Each file is checked after writing: its tags must read back as intended and its audio must be byte for byte the same, else it is left as it was. The original goes to Playlark's trash for 30 days, and ⌘Z writes the old tags back. A folder opened in the browser shows the tags read-only.
+**Song Info…** (⌘I, or right-click) shows the selected songs' tags, their cover and, for one song, its format, length, sample rate, bit rate, size and path. In the desktop app and on a Playlark server you can change the title, artist, album, album artist, track and disc numbers, year, genre, compilation flag and cover (Choose Image…, Paste or Remove; JPEG or PNG). With several songs selected, fields that differ show "Mixed", and only the fields you change are written; the title and track number can be changed one song at a time. MP3, FLAC, M4A, Ogg Vorbis, Opus and WAV files can be edited (an Ogg file with more than one stream is left alone). Each file is checked after writing: its tags must read back as intended and its audio must be byte for byte the same, else it is left as it was. The original goes to Playlark's trash for 30 days, and ⌘Z writes the old tags back. A folder opened in the browser shows the tags read-only.
+
+## The phone layout
+
+On a screen narrower than 700 px, the sidebar gives way to a tab bar at the bottom: **Songs**, **Albums**, **Artists**, **Playlists** (the collections and playlists) and **Search**. A tap plays a song. The now-playing bar becomes a mini bar with play and next; **⌃** opens a full-screen player with the cover, seek bar, shuffle, repeat, the heart and the queue.
+
+## Opening offline
+
+On a Playlark server, the browser keeps the app's own files (never music), so **Add to Home Screen** gives a full-screen app with its own icon, and it still opens with no network.

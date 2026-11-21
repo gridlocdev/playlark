@@ -7,7 +7,7 @@
   "description": "Serves the Playlark web client and one music folder, for a NAS.",
   "scripts": {
     "start": "node src/main.ts",
-    "dev": "PLAYLARK_MUSIC=../../e2e/fixtures/basic PLAYLARK_STATIC=../web/dist node --watch src/main.ts",
+    "dev": "PLAYLARK_MUSIC=../../e2e/fixtures/basic PLAYLARK_READ_ONLY=1 PLAYLARK_DATA=../../.nas-data/dev PLAYLARK_STATIC=../web/dist node --watch src/main.ts",
     "build": "echo 'server runs from source (node type stripping)'"
   },
   "exports": {

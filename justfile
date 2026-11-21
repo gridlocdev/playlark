@@ -30,10 +30,18 @@ run-desktop-headless dir=(justfile_directory() / ".headless-data"): build-deskto
 preview-web: build-web
     pnpm --filter @playlark/web preview
 
-# The NAS server on http://localhost:8830, serving the built web client and a music folder (default: the fixtures).
+# The NAS server on http://localhost:8830, serving the built web client and a music folder. With no folder it
+# serves a fresh copy of the fixtures in .nas-data, so tag and playlist saves never touch the fixtures themselves.
 [group('run')]
-run-server dir=(justfile_directory() / "e2e/fixtures/basic"): build-web
-    PLAYLARK_MUSIC="{{ dir }}" node apps/server/src/main.ts
+run-server dir="": build-web
+    #!/usr/bin/env bash
+    set -euo pipefail
+    music="{{ dir }}"
+    if [ -z "$music" ]; then
+        rm -rf .nas-data/Music && mkdir -p .nas-data && cp -R e2e/fixtures/basic .nas-data/Music
+        music=.nas-data/Music
+    fi
+    PLAYLARK_MUSIC="$music" PLAYLARK_DATA=.nas-data/server node apps/server/src/main.ts
 
 # Web client dev server with the API proxied to `just run-server` (run both).
 [group('run')]
@@ -134,6 +142,10 @@ fmt-check:
 [group('quality')]
 check-arch:
     pnpm vitest run test/architecture.test.ts
+
+# Regenerate every icon file from assets/icon.svg (needs Inkscape; icon.icns needs macOS). Commit the output.
+icons:
+    scripts/make-icons.sh assets/icon.svg apps/desktop/build --work build/icons --web apps/web/public
 
 # Regenerate the audio fixtures in e2e/fixtures and packages/core/test/fixtures (needs ffmpeg).
 [group('quality')]

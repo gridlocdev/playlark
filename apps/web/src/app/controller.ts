@@ -298,14 +298,14 @@ export class AppController {
       this.#setSongs(sortSongs([...found.values()]));
     });
     try {
-      // One listing: the playlists for the sidebar (§9.1), the music files for the scan.
-      const files = await source.list();
+      // One listing: the playlists for the sidebar (§9.1), the music files for the scan; songs a server read.
+      const [files, known] = await Promise.all([source.list(), source.known?.() ?? null]);
       if (this.#scan !== scan) return;
       this.playlists.setPaths(files.filter((f) => isPlaylistPath(f.path)).map((f) => f.path));
       const songs = await scanLibrary(
         { ...source, list: () => Promise.resolve(files) },
         {
-          previous: before,
+          previous: known ? [...before, ...known] : before,
           signal: scan.signal,
           onProgress: (p) => {
             if (this.#scan === scan) this.scanning.value = p;

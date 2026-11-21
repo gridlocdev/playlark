@@ -4,6 +4,7 @@ import type { AppController } from './controller.ts';
 import { SidebarCollections } from './Collections.tsx';
 import { Dialogs } from './Dialogs.tsx';
 import { NowPlaying } from './NowPlaying.tsx';
+import { PhoneTabs } from './Phone.tsx';
 import { SidebarPlaylists } from './PlaylistUI.tsx';
 import { QueuePanel } from './QueuePanel.tsx';
 import { StatusBar } from './StatusBar.tsx';
@@ -24,7 +25,10 @@ function section(view: View): View['kind'] {
   return view.kind;
 }
 
-/** The window (PRD §6.1): sidebar, toolbar with search, the view and the queue, now playing, status bar. */
+/**
+ * The window (PRD §6.1): sidebar, toolbar with search, the view and the queue, now playing, status bar. Below
+ * 700 px the sidebar gives way to a bottom tab bar (§18.5).
+ */
 export function App({ app, catalog }: { readonly app: AppController; readonly catalog: CommandCatalog }) {
   const view = app.view.value;
   const history = app.history.value;
@@ -101,6 +105,7 @@ export function App({ app, catalog }: { readonly app: AppController; readonly ca
       </div>
       <NowPlaying app={app} catalog={catalog} />
       <StatusBar app={app} />
+      <PhoneTabs app={app} catalog={catalog} />
       <Dialogs app={app} catalog={catalog} />
       {app.menu.value && (
         <PopupMenu

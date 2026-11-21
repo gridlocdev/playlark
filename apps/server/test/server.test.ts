@@ -16,7 +16,13 @@ import {
 
 const dir = mkdtempSync(path.join(tmpdir(), 'playlark-server-'));
 const music = path.join(dir, 'music');
-const server = createServer({ staticDir: path.join(dir, 'web'), musicDir: music, allowedHosts: ['nas.lan'] });
+const server = createServer({
+  staticDir: path.join(dir, 'web'),
+  musicDir: music,
+  dataDir: path.join(dir, 'data'),
+  poll: true,
+  allowedHosts: ['nas.lan'],
+});
 let base: string;
 
 beforeAll(async () => {
@@ -28,12 +34,12 @@ beforeAll(async () => {
   writeFileSync(path.join(music, 'Band', 'Album', '01 Song #1.mp3'), '0123456789');
   writeFileSync(path.join(music, 'notes.txt'), 'private');
   symlinkSync(path.join(dir, 'secret.mp3'), path.join(music, 'link.mp3'));
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
-  base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  await new Promise<void>((resolve) => server.http.listen(0, '127.0.0.1', resolve));
+  base = `http://127.0.0.1:${(server.http.address() as AddressInfo).port}`;
 });
 
 afterAll(async () => {
-  await new Promise((resolve) => server.close(resolve));
+  await server.close();
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -42,7 +48,7 @@ const song = `/api/media/Band/Album/${encodeURIComponent('01 Song #1.mp3')}`;
 describe('the API', () => {
   it('names the folder', async () => {
     const r = await fetch(`${base}/api/info`);
-    expect(await r.json()).toEqual({ app: 'Playlark', name: 'music' });
+    expect(await r.json()).toEqual({ app: 'Playlark', name: 'music', readOnly: false });
   });
 
   it('lists the music files only', async () => {
@@ -79,8 +85,9 @@ describe('the API', () => {
     expect((await fetch(`${base}/api/media/%E0%A4%A`)).status).toBe(400);
   });
 
-  it('refuses writes', async () => {
+  it('refuses writes to what can only be read', async () => {
     expect((await fetch(`${base}/api/files`, { method: 'POST' })).status).toBe(405);
+    expect((await fetch(`${base}${song}`, { method: 'PUT' })).status).toBe(405);
   });
 
   it('refuses unknown host names', async () => {

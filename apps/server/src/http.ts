@@ -12,7 +12,8 @@ export class HttpError extends Error {
   }
 }
 
-const STATUS: Record<FolderErrorCode, number> = {
+/** The status each refusal answers with. */
+export const FOLDER_STATUS: Record<FolderErrorCode, number> = {
   changed: 412,
   deleted: 412,
   exists: 409,
@@ -23,7 +24,7 @@ const STATUS: Record<FolderErrorCode, number> = {
 
 /** A FolderError as the HTTP error it means; anything else unchanged. */
 export function httpError(e: unknown): unknown {
-  if (e instanceof FolderError) return new HttpError(STATUS[e.code], e.message, e.code);
+  if (e instanceof FolderError) return new HttpError(FOLDER_STATUS[e.code], e.message, e.code);
   if (typeof e === 'object' && e !== null && 'code' in e && (e.code === 'ENOENT' || e.code === 'ENOTDIR'))
     return new HttpError(404, 'Not found', 'not-found');
   return e;

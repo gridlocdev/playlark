@@ -60,6 +60,7 @@ export function viewRows(view: View, from: RowSources): readonly Song[] {
       return mostPlayed(lib.songs, from.stats());
     case 'albums':
     case 'artists':
+    case 'playlists':
       return [];
   }
 }

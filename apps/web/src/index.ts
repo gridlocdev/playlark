@@ -36,3 +36,4 @@ export {
   type View,
 } from './app/views.ts';
 export { NO_SELECTION, all, click, keep, only, selectedRows, step, type Selection } from './app/selection.ts';
+export { SHELL_CACHE_PREFIX, answersFromShell, shellCacheName, shellFiles } from './shell.ts';

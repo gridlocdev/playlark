@@ -51,7 +51,7 @@ export {
   type TagEdit,
 } from './tags/edit.ts';
 export { TagCheckError, canEditFormat, rewriteTags, type Rewritten } from './tags/writeTags.ts';
-export { decodeBase64, parseFlacPicture, pictureMime } from './tags/picture.ts';
+export { decodeBase64, encodeBase64, parseFlacPicture, pictureMime } from './tags/picture.ts';
 export { parseVorbisComment, vorbisPictures, vorbisTags, type Comments } from './tags/vorbisComment.ts';
 export {
   baseName,
@@ -101,6 +101,7 @@ export {
   type Listening,
   type SongStats,
 } from './stats.ts';
+export { applyStatsChanges, parseStatsChanges, statsChanges, type StatsChange } from './statsSync.ts';
 export {
   compareInAlbum,
   compareNames,

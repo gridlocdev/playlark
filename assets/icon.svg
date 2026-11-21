@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Playlark's icon. 1024 canvas on Apple's icon grid: an 824-unit tile at (100,100) with a transparent margin.
+     scripts/make-icons.sh crops to the tile for Windows, Linux and the web app, so keep the tile there. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" gradientUnits="userSpaceOnUse" x1="0" y1="100" x2="0" y2="924">
+      <stop offset="0" stop-color="#FF9A62" />
+      <stop offset="1" stop-color="#E5532B" />
+    </linearGradient>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#tile)" />
+
+  <!-- Two beamed notes, nudged so the group is optically centred. -->
+  <g transform="translate(-28 8)" fill="#FFFFFF">
+    <ellipse cx="392" cy="690" rx="92" ry="68" transform="rotate(-22 392 690)" />
+    <ellipse cx="672" cy="630" rx="92" ry="68" transform="rotate(-22 672 630)" />
+    <rect x="438" y="320" width="44" height="370" />
+    <rect x="718" y="260" width="44" height="370" />
+    <path d="M 438 300 L 762 240 L 762 330 L 438 390 Z" />
+  </g>
+</svg>

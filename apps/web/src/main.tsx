@@ -2,6 +2,7 @@ import { effect } from '@preact/signals';
 import { render } from 'preact';
 import '@playlark/ui/styles.css';
 import './app.css';
+import './phone.css';
 import {
   WebAudioEngine,
   bridgeIndexStore,
@@ -11,7 +12,7 @@ import {
   every,
   browserSettings,
   listenForKeys,
-  serverLibrary,
+  connectServer,
   urlLibrary,
 } from '@playlark/ui';
 import { App } from './app/App.tsx';
@@ -82,7 +83,9 @@ async function openDesktopFolder(app: AppController, bridge: PlaylarkNative): Pr
 }
 
 async function start(): Promise<void> {
-  const nas = native ? null : await serverLibrary();
+  const local = native ? null : browserIndexStore();
+  const server = local ? await connectServer(local) : null;
+  const nas = server?.source ?? null;
   const settings = browserSettings();
   const saved = settings.load();
   const app = new AppController({
@@ -103,7 +106,7 @@ async function start(): Promise<void> {
       : {}),
     index: native
       ? bridgeIndexStore(native.index, (id) => `app://playlark/cover/${id}`)
-      : browserIndexStore(),
+      : (server?.index ?? local ?? browserIndexStore()),
     imageUrl: (bytes, mime) => URL.createObjectURL(new Blob([bytes], { type: mime })),
     volume: saved.volume,
     playback: () => settings.load(),
@@ -148,7 +151,15 @@ async function start(): Promise<void> {
     menu.send(nativeMenu(catalog));
   }
 
+  // The phone app (§18.5): keep the app's own files so it opens offline. Only a server's page has one.
+  if (server && import.meta.env.PROD && 'serviceWorker' in navigator)
+    navigator.serviceWorker
+      .register('./sw.js')
+      .catch((e: unknown) => console.warn('Playlark won’t open offline:', e));
+
   const opening = native ? openDesktopFolder(app, native) : nas ? app.open(nas) : Promise.resolve();
+  // A server says when its folder changed (§18.2): read it again, reusing what the server read.
+  server?.watch(() => void app.rescan());
   await opening.catch((e: unknown) => {
     console.error(e);
     app.say(`Couldn’t open the music folder: ${e instanceof Error ? e.message : String(e)}`, {

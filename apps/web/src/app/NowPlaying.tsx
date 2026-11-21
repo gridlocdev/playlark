@@ -1,8 +1,12 @@
+import { useState } from 'preact/hooks';
 import { formatTime, Icon, type CommandCatalog } from '@playlark/ui';
 import type { AppController } from './controller.ts';
 import { Heart } from './SongList.tsx';
 
-/** The now-playing bar (PRD §8.1): the song, the transport buttons, the seek bar, the heart, the volume and the queue. */
+/**
+ * The now-playing bar (PRD §8.1): the song, the transport buttons, the seek bar, the heart, the volume and the queue.
+ * Below 700 px it is a mini bar that opens into a full-screen player (§18.5).
+ */
 export function NowPlaying({
   app,
   catalog,
@@ -17,6 +21,7 @@ export function NowPlaying({
   const duration = player.duration.value;
   const volume = player.volume.value;
   const repeat = player.repeat.value;
+  const [open, setOpen] = useState(false);
   const button = (id: string, icon: string, label: string, extra = '', pressed?: boolean) => {
     const c = catalog.get(id)!;
     const keys = catalog.keys(c).join(' ');
@@ -35,7 +40,15 @@ export function NowPlaying({
     );
   };
   return (
-    <section class="pl-now" aria-label="Now playing">
+    <section class={open ? 'pl-now pl-now-open' : 'pl-now'} aria-label="Now playing">
+      <button
+        type="button"
+        class="pl-icon-button pl-phone-only pl-now-close"
+        aria-label="Close Player"
+        onClick={() => setOpen(false)}
+      >
+        <Icon name="chevron-down" />
+      </button>
       <div class="pl-now-song">
         <button
           type="button"
@@ -121,7 +134,15 @@ export function NowPlaying({
         />
         <button
           type="button"
-          class="pl-icon-button"
+          class="pl-icon-button pl-phone-only pl-now-expand"
+          aria-label="Open Player"
+          onClick={() => setOpen(true)}
+        >
+          <Icon name="chevron-up" />
+        </button>
+        <button
+          type="button"
+          class="pl-icon-button pl-now-queue"
           aria-label="Queue"
           aria-pressed={app.queueShown.value}
           title={`Queue (${catalog.keys(catalog.get('view.queue')!).join(' ')})`}

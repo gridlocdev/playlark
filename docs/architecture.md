@@ -18,7 +18,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
      │  LibrarySource ─┬─ memoryLibrary        (tests, demo)         │
      │                 ├─ browserFolderLibrary (a folder the browser │
      │                 │                        was given)           │
-     │                 ├─ serverLibrary        (NAS: /api)           │
+     │                 ├─ connectServer        (NAS: /api)           │
      │                 └─ urlLibrary           (desktop: app://)     │
      │  IndexStore ─┬─ memoryIndexStore  (tests)                     │
      │              ├─ browserIndexStore (IndexedDB)                 │
@@ -37,7 +37,7 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 
  packages/node-files  Node only: folder listings confined to the folder, media replies with Range, atomic writes,
                       playlist writes under a lock file with versions, the trash
- apps/server          node:http, GET and HEAD only: the static client + /api/{info,files,media}
+ apps/server          node:http: the static client and /api; scans and watches the folder itself (ServerLibrary)
  apps/desktop         Electron main + sandboxed preload; loads the apps/web build from app://playlark/
 ```
 
@@ -96,10 +96,14 @@ Playlark is one TypeScript code base that runs in three places: the browser, the
 
 ## Server (`apps/server`)
 
-- The server answers `GET` and `HEAD` only. Any other method gets 405.
-- `/api/info` gives the folder's name. `/api/files` gives the music files with their sizes and modified times. `/api/media/<path>` gives a song's bytes, and supports `Range`.
+- `ServerLibrary` (`library.ts`) scans the music folder on start with the same `scanLibrary` the page uses, reading only files whose size or time changed. It keeps the index and covers in the data folder (`--data`), and rescans 2 s after `fs.watch` reports a change, or every 60 s with `--poll` or where the folder can't be watched (SMB, NFS). One scan runs at a time.
+- Reads: `/api/info` (the folder's name, `readOnly`), `/api/files`, `/api/media/<path>` (with `Range`), `/api/library` (the index with an `ETag`; 304 when the page has it, 204 before the first scan), `/api/covers/<sha256>` (cached for a year) and `/api/events` (server-sent events: `scan` with progress, `library` with the new ETag; a comment every 25 s keeps the stream open).
+- Writes (`api.ts`): playlists at `/api/playlists/<path>` — `PUT` with `If-None-Match: *` to create or `If-Match: "<sha256>"` to write over the version read, `POST {to}` to rename, `DELETE` with `If-Match` to trash; `POST /api/tags` with the edit and the size and time read; `POST /api/stats` with what changed since the device last sent (`StatsChange`: plays add up, the latest play wins). Each runs the same `node-files` writers and checks as the desktop app. A stale version gets 412 and a clash 409, each with the reason in the body.
+- A write must come from the server's own page (`Origin` matching `Host`, else 403) and send `application/json` where it sends JSON (else 415), so another site can't post a form to it. `--read-only` refuses playlist and tag writes with 403; stats still save.
 - Every path is resolved inside the music folder, symlinks included. A path that leads outside the folder gets 403.
 - A request whose `Host` header isn't allowed gets 421. The server has no sign-in, so it listens on loopback unless it is started with `--no-auth`.
+- The page (`connectServer` in `sources.ts`) reads the index from the server and shows covers from `/api/covers`. It keeps the queue in the browser and sends stats as changes. When the event stream reports a new ETag, it rescans, starting from the songs the server read.
+- `apps/web/src/sw.ts` is the phone app's service worker, built as `sw.js` with the build's file list written in. It keeps the app's own files at install and answers from them only while offline; it never handles `/api`. Only a server's page registers it.
 
 ## Desktop (`apps/desktop`)
 

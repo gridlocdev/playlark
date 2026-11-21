@@ -59,3 +59,17 @@ export function decodeBase64(text: string): Uint8Array | null {
   }
   return out.subarray(0, n);
 }
+
+/** Encodes bytes as base64 with padding (a cover sent over HTTP, §18.2). */
+export function encodeBase64(bytes: Uint8Array): string {
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i]!;
+    const b = bytes[i + 1];
+    const c = bytes[i + 2];
+    const n = (a << 16) | ((b ?? 0) << 8) | (c ?? 0);
+    out += BASE64[(n >>> 18) & 63]! + BASE64[(n >>> 12) & 63]!;
+    out += b === undefined ? '==' : BASE64[(n >>> 6) & 63]! + (c === undefined ? '=' : BASE64[n & 63]!);
+  }
+  return out;
+}

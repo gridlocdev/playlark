@@ -10,6 +10,6 @@ Each slice leaves `just check` green and the app working. Tick a slice when it l
 - [x] **6. Favourites and play counts** (§10). Stats file, hearts, counted plays, Favourites, Recently Added, Most Played. A moved song keeps its stats through `findMoves` (§3.3).
 - [x] **7. Tag editing: MP3, FLAC, M4A** (§11). Writers, the Song Info dialog, the safety checks, the trash, undo.
 - [x] **8. Tag editing: Ogg and WAV** (§11.2).
-- [ ] **9. NAS server** (§18). API, range streaming, server-side scan and watching, events, playlist and tag writes, stats, `--read-only`, the phone layout and PWA, Docker.
+- [x] **9. NAS server** (§18). API, range streaming, server-side scan and watching, events, playlist and tag writes, stats, `--read-only`, the phone layout and PWA, Docker.
 - [ ] **10. CLI** (§20). Commands, `--json`, `play`, the agent skill file.
 - [ ] **11. Settings and release polish** (§19, §14). Settings window, desktop first-start question and folder switching, icon, docs, CHANGELOG, CI.

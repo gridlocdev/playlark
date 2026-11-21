@@ -287,6 +287,8 @@ function SongRow(props: {
       }}
       onClick={(e) => {
         if (props.selected && !e.shiftKey && !e.metaKey && !e.ctrlKey) props.onPick(e);
+        // A double tap zooms on a phone, so a tap plays (§18.5).
+        if ('pointerType' in e && e.pointerType === 'touch' && !s.error) props.onPlay();
       }}
       onDragStart={props.onDragStart}
       onDragOver={props.onDragOver}

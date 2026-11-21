@@ -31,3 +31,4 @@ export {
   type PlaylistResult,
 } from './playlistFiles.ts';
 export { tagResult, writeSongTags, type FileFacts, type TagResult } from './songFiles.ts';
+export { diskByteSource, folderScanSource } from './scanFolder.ts';

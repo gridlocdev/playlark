@@ -54,3 +54,11 @@ just package-desktop      # .dmg and .zip on macOS, .exe on Windows, AppImage on
 just package-desktop-dir  # an unpacked app only, faster
 just install-desktop      # macOS: package and copy to /Applications; the old copy goes to the Trash
 ```
+
+## App icon
+
+`assets/icon.svg` is the source of every icon. After changing it, run `just icons` (needs Inkscape; `icon.icns` needs macOS) and commit what it writes: `apps/desktop/build/icon.{icns,ico,png}` and the web app's icons in `apps/web/public`.
+
+## Docker
+
+`docker build -t playlark .` builds the NAS image: it builds the web client, then runs the server from source with no dependencies outside the workspace. `compose.example.yaml` shows how to run it; see [Running on a NAS](guides/nas.md).

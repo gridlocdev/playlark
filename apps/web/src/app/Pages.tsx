@@ -3,6 +3,7 @@ import { fold, type Album, type Artist, type CoverRef, type Folder, type Song } 
 import { formatCount, formatTime, Icon, useVirtualRows, type CommandCatalog } from '@playlark/ui';
 import type { AppController } from './controller.ts';
 import { collection, type CollectionKind } from './Collections.tsx';
+import { PlaylistsPage } from './Phone.tsx';
 import { LIST_COLUMNS, SongList } from './SongList.tsx';
 import type { View } from './views.ts';
 
@@ -34,6 +35,8 @@ export function viewTitle(app: AppController, view: View): string {
     case 'recent':
     case 'mostPlayed':
       return collection(view.kind).title;
+    case 'playlists':
+      return 'Playlists';
   }
 }
 
@@ -106,6 +109,8 @@ export function CurrentView({
     case 'recent':
     case 'mostPlayed':
       return <CollectionPage app={app} kind={view.kind} />;
+    case 'playlists':
+      return <PlaylistsPage app={app} catalog={catalog} />;
   }
 }
 

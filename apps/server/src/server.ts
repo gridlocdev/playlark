@@ -4,8 +4,10 @@ import http from 'node:http';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
-import { listMusicFiles, mediaReply } from '@playlark/node-files';
+import { indexFolder, listMusicFiles, mediaReply } from '@playlark/node-files';
+import { PLAYLISTS_PREFIX, createApi, pathAfter } from './api.ts';
 import { HttpError, SECURITY_HEADERS, httpError, sendJson } from './http.ts';
+import { ServerLibrary } from './library.ts';
 
 /**
  * The NAS server (PRD §18): the built web client, and read access to one music folder. It has no accounts: on
@@ -21,6 +23,20 @@ export interface ServerOptions {
    * by. Any other `Host` is refused, so a web page can't reach the folder by pointing its own name here.
    */
   readonly allowedHosts?: readonly string[];
+  /** Where the index, covers, stats and trash are kept (never the music folder). Needed with a music folder. */
+  readonly dataDir?: string;
+  /** Refuse playlist and tag writes (§18.1). */
+  readonly readOnly?: boolean;
+  /** Read the folder on a timer instead of watching it (§18.3). */
+  readonly poll?: boolean;
+}
+
+/** A server and the library it scans; `close` stops both. */
+export interface PlaylarkServer {
+  readonly http: http.Server;
+  /** The scan and watch of the music folder, or null when there is none. */
+  readonly library: ServerLibrary | null;
+  close(): Promise<void>;
 }
 
 export const DEFAULT_PORT = 8830;
@@ -44,10 +60,40 @@ const MIME: Record<string, string> = {
 };
 
 const MEDIA_PREFIX = '/api/media/';
+const COVERS_PREFIX = '/api/covers/';
+/** A comment down each open event stream this often, so proxies don't close it. */
+const KEEP_ALIVE_MS = 25_000;
 
-export function createServer(opts: ServerOptions): http.Server {
-  return http.createServer((req, res) => {
-    handle(req, res, opts).catch((e: unknown) => {
+type Api = ReturnType<typeof createApi>;
+
+interface Context {
+  readonly opts: ServerOptions;
+  readonly library: ServerLibrary | null;
+  readonly api: Api | null;
+  readonly data: ReturnType<typeof indexFolder> | null;
+}
+
+export function createServer(opts: ServerOptions): PlaylarkServer {
+  const name = opts.musicDir ? path.basename(opts.musicDir) : '';
+  const data = opts.musicDir && opts.dataDir ? indexFolder(opts.dataDir) : null;
+  const library =
+    opts.musicDir && data
+      ? new ServerLibrary({ root: opts.musicDir, name, data, ...(opts.poll ? { poll: true } : {}) })
+      : null;
+  const api =
+    opts.musicDir && opts.dataDir && data && library
+      ? createApi({
+          root: opts.musicDir,
+          name,
+          dataDir: opts.dataDir,
+          data,
+          readOnly: opts.readOnly === true,
+          changed: () => library.changed(),
+        })
+      : null;
+  const ctx: Context = { opts, library, api, data };
+  const server = http.createServer((req, res) => {
+    handle(req, res, ctx).catch((e: unknown) => {
       const err = httpError(e);
       if (!(err instanceof HttpError)) console.error(err);
       if (res.headersSent) return void res.destroy();
@@ -55,42 +101,126 @@ export function createServer(opts: ServerOptions): http.Server {
       else sendJson(res, 500, { code: 'failed', message: 'Server error' });
     });
   });
+  void library?.start().catch((e: unknown) => console.error('Couldn’t read the music folder:', e));
+  return {
+    http: server,
+    library,
+    close: () =>
+      new Promise((resolve) => {
+        library?.close();
+        server.close(() => resolve());
+        server.closeAllConnections();
+      }),
+  };
 }
 
-async function handle(
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-  opts: ServerOptions,
-): Promise<void> {
+/**
+ * A write must come from the server's own page: a page elsewhere can send a form, but not with JSON or with PUT
+ * and DELETE (those need the server's leave, which it never gives), and its `Origin` names another host.
+ */
+function sameOrigin(req: http.IncomingMessage): boolean {
+  const origin = req.headers.origin;
+  if (origin === undefined) return true;
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch {
+    return false;
+  }
+}
+
+async function handle(req: http.IncomingMessage, res: http.ServerResponse, ctx: Context): Promise<void> {
+  const { opts, library, api } = ctx;
   if (!hostAllowed(req.headers.host, opts.allowedHosts ?? []))
     throw new HttpError(421, 'Unknown host: add it to PLAYLARK_HOSTS.');
   const url = new URL(req.url ?? '/', 'http://localhost');
+  const read = req.method === 'GET' || req.method === 'HEAD';
   const head = req.method === 'HEAD';
-  if (req.method !== 'GET' && !head) throw new HttpError(405, 'Method not allowed');
-  if (url.pathname.startsWith('/api/')) {
+  if (!read && !sameOrigin(req)) throw new HttpError(403, 'Forbidden');
+  const p = url.pathname;
+  if (p.startsWith('/api/')) {
     // The page asks first, to learn whether its music is here or in a folder the browser opens.
-    if (url.pathname === '/api/info')
+    if (p === '/api/info' && read)
       return sendJson(res, 200, {
         app: 'Playlark',
         name: opts.musicDir ? path.basename(opts.musicDir) : null,
+        readOnly: !api || opts.readOnly === true,
       });
     if (!opts.musicDir) throw new HttpError(404, 'Not found');
-    if (url.pathname === '/api/files')
-      return sendJson(res, 200, { files: await listMusicFiles(opts.musicDir) });
-    if (url.pathname.startsWith(MEDIA_PREFIX)) return sendMedia(req, res, opts.musicDir, url.pathname, head);
-    throw new HttpError(404, 'Not found');
+    if (p === '/api/files' && read) return sendJson(res, 200, { files: await listMusicFiles(opts.musicDir) });
+    if (p.startsWith(MEDIA_PREFIX) && read) return sendMedia(req, res, opts.musicDir, p, head);
+    if (p === '/api/library' && read && library) return sendIndex(req, res, library);
+    if (p === '/api/events' && req.method === 'GET' && library) return sendEvents(req, res, library);
+    if (p.startsWith(COVERS_PREFIX) && read && ctx.data) return sendCover(res, ctx.data, p, head);
+    if (api) {
+      if (p === '/api/stats') return api.stats(req, res);
+      if (p === '/api/tags') return api.tags(req, res);
+      if (p.startsWith(PLAYLISTS_PREFIX)) return api.playlist(req, res, p);
+    }
+    throw new HttpError(read ? 404 : 405, read ? 'Not found' : 'Method not allowed');
   }
+  if (!read) throw new HttpError(405, 'Method not allowed');
   if (!opts.staticDir) throw new HttpError(404, 'Not found');
-  await serveStatic(res, opts.staticDir, url.pathname, head);
+  await serveStatic(res, opts.staticDir, p, head);
+}
+
+/** The server's index (§18.2), or 204 before its first scan; 304 when the page has it already. */
+function sendIndex(req: http.IncomingMessage, res: http.ServerResponse, library: ServerLibrary): void {
+  const index = library.index;
+  if (!index) return void res.writeHead(204, { 'Cache-Control': 'no-store', ...SECURITY_HEADERS }).end();
+  const headers = { ETag: index.etag, 'Cache-Control': 'no-cache', ...SECURITY_HEADERS };
+  if (req.headers['if-none-match'] === index.etag) return void res.writeHead(304, headers).end();
+  res.writeHead(200, {
+    ...headers,
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(index.text),
+  });
+  res.end(req.method === 'HEAD' ? undefined : index.text);
+}
+
+/** Server-sent events: each scan's progress and each change to the library (§18.2). */
+function sendEvents(req: http.IncomingMessage, res: http.ServerResponse, library: ServerLibrary): void {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-store',
+    'X-Accel-Buffering': 'no',
+    ...SECURITY_HEADERS,
+  });
+  const send = (event: string, data: unknown) =>
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  if (library.index) send('library', { etag: library.index.etag });
+  const stop = library.subscribe((e) =>
+    e.type === 'scan' ? send('scan', e.progress) : send('library', { etag: e.etag }),
+  );
+  const alive = setInterval(() => res.write(': alive\n\n'), KEEP_ALIVE_MS);
+  req.on('close', () => {
+    clearInterval(alive);
+    stop();
+  });
+}
+
+/** A cover the scan stored, named by its SHA-256, so it never changes (§18.2). */
+async function sendCover(
+  res: http.ServerResponse,
+  data: ReturnType<typeof indexFolder>,
+  pathname: string,
+  head: boolean,
+): Promise<void> {
+  const id = pathname.slice(COVERS_PREFIX.length);
+  const cover = /^[0-9a-f]{64}$/.test(id) ? await data.cover(id) : null;
+  if (!cover) throw new HttpError(404, 'Not found');
+  const bytes = await readFile(cover.file);
+  res.writeHead(200, {
+    'Content-Type': cover.mime,
+    'Content-Length': bytes.length,
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    ...SECURITY_HEADERS,
+  });
+  res.end(head ? undefined : bytes);
 }
 
 /** The relative path in `/api/media/<each part encoded>`, or null when it doesn't decode. */
 export function mediaPath(pathname: string): string | null {
-  try {
-    return pathname.slice(MEDIA_PREFIX.length).split('/').map(decodeURIComponent).join('/');
-  } catch {
-    return null;
-  }
+  return pathAfter(MEDIA_PREFIX, pathname);
 }
 
 async function sendMedia(

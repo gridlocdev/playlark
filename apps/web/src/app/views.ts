@@ -11,7 +11,9 @@ export type View =
   | { readonly kind: 'playlist'; readonly path: string }
   | { readonly kind: 'favourites' }
   | { readonly kind: 'recent' }
-  | { readonly kind: 'mostPlayed' };
+  | { readonly kind: 'mostPlayed' }
+  /** The collections and playlists as a page: the phone layout's Playlists tab (§18.5). */
+  | { readonly kind: 'playlists' };
 
 export const SONGS: View = { kind: 'songs' };
 
