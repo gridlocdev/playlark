@@ -54,7 +54,11 @@ async function join(first: string, second: string): Promise<JoinResult> {
     suspend: () => Promise.resolve(),
     resume: () => Promise.resolve(),
   };
-  const engine = new WebAudioEngine(context, { node: offline.destination, play: () => Promise.resolve() });
+  const engine = new WebAudioEngine(context, {
+    node: offline.destination,
+    play: () => Promise.resolve(),
+    pause: () => {},
+  });
   const [a, b] = await Promise.all([load(first), load(second)]);
   const decodedA = await engine.decode(a.bytes, a.song);
   const decodedB = await engine.decode(b.bytes, b.song);

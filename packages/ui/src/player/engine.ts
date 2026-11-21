@@ -63,6 +63,8 @@ export interface EngineOutput {
   readonly node: AudioNode;
   /** Starts the sound; rejects with `NotAllowedError` while the browser keeps it off. */
   play(): Promise<void>;
+  /** Pauses the element, so Now Playing shows Play (macOS goes by the element, not `playbackState`). */
+  pause(): void;
 }
 
 interface WebSong extends DecodedSong {
@@ -140,7 +142,11 @@ export class WebAudioEngine implements AudioEngine {
     element.loop = true;
     element.hidden = true;
     doc.body.append(element);
-    return new WebAudioEngine(context, { node: context.destination, play: () => element.play() });
+    return new WebAudioEngine(context, {
+      node: context.destination,
+      play: () => element.play(),
+      pause: () => element.pause(),
+    });
   }
 
   async decode(bytes: ArrayBuffer, song: Song): Promise<DecodedSong> {
@@ -204,6 +210,7 @@ export class WebAudioEngine implements AudioEngine {
   async pause(): Promise<void> {
     if (this.#pausedAt !== null) return;
     this.#pausedAt = this.position();
+    this.#output.pause();
     await this.#context.suspend();
   }
 

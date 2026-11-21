@@ -149,7 +149,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 
 ### §8.1 Now-playing bar
 
-- Cover, title and artist (click: go to the album; artist: go to the artist), Previous, Play/Pause, Next, a seek bar with elapsed and remaining time, Shuffle, Repeat This Song, Repeat Queue, a volume slider, the favourite heart, and the queue button.
+- Cover, title and artist (click: go to the album; artist: go to the artist), Previous, Play/Pause, Next, a seek bar with elapsed and remaining time, Shuffle, Loop This Song, Loop Queue, a volume slider, the favourite heart, and the queue button.
 - While a song loads (§8.3): the play button shows a spinner and the bar shows "Loading…". Nothing playing: the bar shows no song and its buttons are disabled except Play, which plays the current view from the top.
 
 ### §8.2 Starting playback
@@ -173,14 +173,14 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 - The queue panel (⌥⌘U) lists the current song and **Up Next**. Up Next rows can be dragged to reorder, removed (Delete, or the row's ×), and played (double-click jumps there). **Clear** empties Up Next. History isn't kept in 1.0.
 - **Next** (⌘→) goes to the next entry. **Previous** (⌘←) restarts the song if more than 3 s in, else goes to the previous entry (the first entry restarts).
 - At the end of the queue with repeat off, playback stops; the last song stays shown, paused at 0:00.
-- The queue (paths), the current entry, the position, shuffle and repeat are saved every 5 s while playing and on every change (desktop: `queue.json` in the app's data folder, beside the library index; browser and NAS client: the browser's storage, per device). A saved queue belongs to one music folder and is ignored for any other, and restored paused on start. Entries whose files are gone are dropped with "2 songs in your queue are gone and were removed."
+- The queue (paths), the current entry, the position, shuffle and loop are saved every 5 s while playing and on every change (desktop: `queue.json` in the app's data folder, beside the library index; browser and NAS client: the browser's storage, per device). A saved queue belongs to one music folder and is ignored for any other, and restored paused on start. Entries whose files are gone are dropped with "2 songs in your queue are gone and were removed."
 
-### §8.5 Shuffle and repeat
+### §8.5 Shuffle and loop
 
 - **Shuffle** (⌘S) shuffles the entries after the current one (seeded Fisher–Yates) and remembers the original order. Turning it off restores the original order after the current song. Songs added with Play Next go right after the current song in both orders; Add to Queue goes at the end of both.
 - Two toggles, each its own button in the now-playing bar; at most one is on, and turning one on turns the other off.
-  - **Repeat This Song** (⌥⌘R; hover text "Repeat this song"): the current song repeats (gaplessly, §8.3); Next and Previous still move.
-  - **Repeat Queue** (⌥⇧⌘R): after the last entry the queue starts again in the same order.
+  - **Loop This Song** (⌥⌘R; hover text "Loop this song"): the current song repeats (gaplessly, §8.3); Next and Previous still move.
+  - **Loop Queue** (⌥⇧⌘R): after the last entry the queue starts again in the same order.
 
 ### §8.6 ReplayGain
 
@@ -190,7 +190,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 ### §8.7 Crossfade
 
 - Setting: Off (default), or 1–12 s. An equal-power fade between songs.
-- Never between consecutive tracks of the same album (same album, track n then n+1): those always join gaplessly. Never on Repeat This Song.
+- Never between consecutive tracks of the same album (same album, track n then n+1): those always join gaplessly. Never on Loop This Song.
 - Next and Previous pressed by hand cut over with a 10 ms ramp, no crossfade. When the song they go to was already decoded ahead (§8.3), it starts at once.
 
 ## §9 Playlists
@@ -318,7 +318,7 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 | Controls | Seek Forward / Back 10 s                        | ⌥⌘→ / ⌥⌘←                   |
 | Controls | Volume Up / Down                                | ⌘↑ / ⌘↓                     |
 | Controls | Shuffle                                         | ⌘S                          |
-| Controls | Repeat This Song / Repeat Queue                 | ⌥⌘R / ⌥⇧⌘R                  |
+| Controls | Loop This Song / Loop Queue                     | ⌥⌘R / ⌥⇧⌘R                  |
 | View     | Songs / Albums / Artists / Folders              | ⌘1 / ⌘2 / ⌘3 / ⌘4           |
 | View     | Back / Forward                                  | ⌘[ / ⌘]                     |
 | View     | Show Queue                                      | ⌥⌘U                         |
@@ -425,7 +425,7 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 
 - Audio fixtures are generated (short sine tones and silence, with known tags and known gapless padding) by a script using ffmpeg and lame on the developer's machine, and committed (a few KB each). Tests and headless runs never touch the user's real music library.
 - Tag readers and writers: round trips per format and per tag version, odd cases (unsynchronised ID3, UTF-16 without BOM, `moov` after `mdat`, Ogg comments across pages), and "audio bytes unchanged" after every write. Random tag-edit sequences check the invariant.
-- Queue, shuffle and repeat: unit and random-operation tests against a simple reference model.
+- Queue, shuffle and loop: unit and random-operation tests against a simple reference model.
 - Gapless: an offline test decodes two fixtures that make one continuous sine when joined and checks the join has no gap or click (sample-exact).
 - Playwright scenarios run the web build headless on a fixture library; a desktop smoke test runs Electron headless and kills every Electron process it starts.
 

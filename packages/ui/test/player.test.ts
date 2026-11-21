@@ -260,10 +260,10 @@ describe('gapless playback', () => {
     expect(engine.decoded).toEqual(['a.mp3', 'b.flac']);
   });
 
-  it('Repeat This Song plays the same buffer again; Next by hand moves on', async () => {
+  it('Loop This Song plays the same buffer again; Next by hand moves on', async () => {
     const { engine, player, paths } = setup();
     await player.playFrom(paths, 0);
-    player.toggleRepeatSong();
+    player.toggleLoopSong();
     expect(player.repeat.value).toBe('one');
     await nearEnd(engine, player);
     expect(engine.queued?.song.path).toBe('a.mp3');
@@ -274,10 +274,10 @@ describe('gapless playback', () => {
     expect(player.currentPath.value).toBe('b.flac');
   });
 
-  it('Repeat Queue goes back to the first song after the last', async () => {
+  it('Loop Queue goes back to the first song after the last', async () => {
     const { engine, player, paths } = setup();
     await player.playFrom(paths, 3);
-    player.toggleRepeatQueue();
+    player.toggleLoopQueue();
     await nearEnd(engine, player);
     engine.finish();
     expect(player.currentPath.value).toBe('a.mp3');

@@ -54,13 +54,13 @@ The queue panel (⌥⌘U) shows the playing song and **Up Next**. Double-click o
 
 Right-click a song, or the selected songs, for **Play Next** (right after the playing song) or **Add to Queue** (at the end). Neither stops what's playing, and the status bar says what was added.
 
-## Shuffle and repeat
+## Shuffle and loop
 
-**Shuffle** (⌘S) shuffles what comes after the playing song; turning it off puts the original order back. The **Shuffle** buttons on album, artist and folder pages play them shuffled. **Repeat This Song** (⌥⌘R) plays the song again without a gap each time it ends; Next still moves on. **Repeat Queue** (⌥⇧⌘R) starts the queue again after the last song. Each is its own button in the now-playing bar, and turning one on turns the other off.
+**Shuffle** (⌘S) shuffles what comes after the playing song; turning it off puts the original order back. The **Shuffle** buttons on album, artist and folder pages play them shuffled. **Loop This Song** (⌥⌘R) plays the song again without a gap each time it ends; Next still moves on. **Loop Queue** (⌥⇧⌘R) starts the queue again after the last song. Each is its own button in the now-playing bar, and turning one on turns the other off.
 
 ## Picking up where you left off
 
-The queue, the song and the place in it, shuffle and repeat are kept, and come back paused the next time Playlark opens the same folder. Songs that are gone by then are dropped, and the status bar says how many.
+The queue, the song and the place in it, shuffle and loop are kept, and come back paused the next time Playlark opens the same folder. Songs that are gone by then are dropped, and the status bar says how many.
 
 ## Desktop app
 
@@ -96,7 +96,7 @@ The **♥** in a song's row, in the now-playing bar or **Favourite** (⌥⌘F) m
 
 ## The phone layout
 
-On a screen narrower than 700 px, the sidebar gives way to a tab bar at the bottom: **Songs**, **Albums**, **Artists**, **Playlists** (the collections and playlists) and **Search**. A tap plays a song. The now-playing bar becomes a mini bar with play and next; **⌃** opens a full-screen player with the cover, seek bar, shuffle, repeat, the heart and the queue.
+On a screen narrower than 700 px, the sidebar gives way to a tab bar at the bottom: **Songs**, **Albums**, **Artists**, **Playlists** (the collections and playlists) and **Search**. A tap plays a song. The now-playing bar becomes a mini bar with play and next; **⌃** opens a full-screen player with the cover, seek bar, shuffle, loop, the heart and the queue.
 
 ## The command line
 

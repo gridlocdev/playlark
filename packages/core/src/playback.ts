@@ -55,7 +55,7 @@ export const CROSSFADE_MAX = 12;
 
 /**
  * How long to fade from `from` into `to` when one ends by itself (§8.7): never between one album's track n and
- * n + 1, never into the same song again (Repeat One), never longer than either song.
+ * n + 1, never into the same song again (Loop This Song), never longer than either song.
  */
 export function crossfadeFor(from: Song, to: Song, seconds: number): number {
   if (!(seconds > 0)) return 0;

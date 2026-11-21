@@ -83,6 +83,11 @@ test.describe('Desktop app', () => {
         }),
       ).toEqual({ playing: true, loop: true, stream: false });
       await expect(bar, 'the next song follows').toContainText('Salt Air', { timeout: 10_000 });
+      // Pause pauses that element too, so Now Playing shows Play.
+      await bar.getByRole('button', { name: 'Pause' }).click();
+      await expect.poll(() => window.evaluate(() => document.querySelector('audio')!.paused)).toBe(true);
+      await bar.getByRole('button', { name: 'Play' }).click();
+      await expect.poll(() => window.evaluate(() => document.querySelector('audio')!.paused)).toBe(false);
       // Show in Finder from the song's right-click menu: a headless run records the file instead of opening Finder.
       await songs(window)
         .getByRole('row', { name: /Morning Tide/ })

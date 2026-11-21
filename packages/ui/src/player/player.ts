@@ -14,8 +14,8 @@ import {
   clearUpNext,
   crossfadeFor,
   current,
-  toggleRepeatQueue,
-  toggleRepeatSong,
+  toggleLoopQueue,
+  toggleLoopSong,
   following,
   isShuffled,
   jumpTo,
@@ -198,14 +198,14 @@ export class Player {
     this.#edit(setShuffle(this.queue.peek(), !this.shuffle.peek(), this.#seed()));
   }
 
-  /** Repeat This Song (⌥⌘R, PRD §8.5). */
-  toggleRepeatSong(): void {
-    this.#edit(toggleRepeatSong(this.queue.peek()));
+  /** Loop This Song (⌥⌘R, PRD §8.5). */
+  toggleLoopSong(): void {
+    this.#edit(toggleLoopSong(this.queue.peek()));
   }
 
-  /** Repeat Queue (⌥⇧⌘R, PRD §8.5). */
-  toggleRepeatQueue(): void {
-    this.#edit(toggleRepeatQueue(this.queue.peek()));
+  /** Loop Queue (⌥⇧⌘R, PRD §8.5). */
+  toggleLoopQueue(): void {
+    this.#edit(toggleLoopQueue(this.queue.peek()));
   }
 
   /** Play Next (PRD §8.2). With nothing playing, the songs wait in the queue. */
@@ -336,7 +336,7 @@ export class Player {
       if (!ahead.queued && ahead.decoded) this.#queue(path, ahead.decoded);
       return;
     }
-    // Repeat One, or the same song twice in a row: the buffer is already here.
+    // Loop This Song, or the same song twice in a row: the buffer is already here.
     if (path === this.currentPath.peek()) {
       this.#queue(path, this.#decoded);
       return;
@@ -453,6 +453,8 @@ export class Player {
   #end(): void {
     this.#load++;
     this.#options.engine.stop();
+    // Paused, not just silent, so Now Playing shows Play.
+    void this.#options.engine.pause();
     this.#decoded = null;
     this.#ahead = null;
     this.position.value = 0;

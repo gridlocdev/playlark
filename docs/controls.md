@@ -51,8 +51,8 @@ Favourites, Recently Added and Most Played are under **Collections** in the side
 | Volume up                                      | **⌘↑**   | **Ctrl+Up**          |
 | Volume down                                    | **⌘↓**   | **Ctrl+Down**        |
 | Shuffle on or off                              | **⌘S**   | **Ctrl+S**           |
-| Repeat this song on or off                     | **⌥⌘R**  | **Ctrl+Alt+R**       |
-| Repeat the queue on or off                     | **⌥⇧⌘R** | **Ctrl+Alt+Shift+R** |
+| Loop this song on or off                       | **⌥⌘R**  | **Ctrl+Alt+R**       |
+| Loop the queue on or off                       | **⌥⇧⌘R** | **Ctrl+Alt+Shift+R** |
 
 Right-click a song, or the selected songs, for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Favourite**, **Song Info…**, **Go to Album** and **Go to Artist**, in the desktop app **Show in Finder** (**Show in File Explorer** on Windows, **Show in File Manager** on Linux), and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
 

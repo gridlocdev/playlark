@@ -1,4 +1,4 @@
-// The queue (PRD §8.2, §8.4, §8.5): editing Up Next, Play Next and Add to Queue, shuffle, repeat, and the queue
+// The queue (PRD §8.2, §8.4, §8.5): editing Up Next, Play Next and Add to Queue, shuffle, loop, and the queue
 // put back after a reload.
 import type { Page } from '@playwright/test';
 import { expect, nowPlaying, openApp, runCommand, songs, test, waitForApp, watchErrors } from './fixtures.ts';
@@ -83,7 +83,7 @@ test.describe('Play Next and Add to Queue', () => {
   });
 });
 
-test.describe('Shuffle and repeat', () => {
+test.describe('Shuffle and loop', () => {
   test('an album’s Shuffle button plays it shuffled, and the toggles turn on and off', async ({ page }) => {
     const errors = watchErrors(page);
     await openApp(page);
@@ -104,15 +104,15 @@ test.describe('Shuffle and repeat', () => {
     await page.keyboard.press('ControlOrMeta+KeyS');
     await expect(shuffle).toHaveAttribute('aria-pressed', 'false');
 
-    const song = bar.getByRole('button', { name: 'Repeat this song' });
-    const all = bar.getByRole('button', { name: 'Repeat Queue' });
-    await expect(song).toHaveAttribute('title', /^Repeat this song \(/);
+    const song = bar.getByRole('button', { name: 'Loop this song' });
+    const all = bar.getByRole('button', { name: 'Loop Queue' });
+    await expect(song).toHaveAttribute('title', /^Loop this song \(/);
     await all.click();
     await expect(all).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('ControlOrMeta+Alt+KeyR');
     await expect(song).toHaveAttribute('aria-pressed', 'true');
     await expect(all).toHaveAttribute('aria-pressed', 'false');
-    // Repeat This Song plays the 2 s song again instead of moving on.
+    // Loop This Song plays the 2 s song again instead of moving on.
     await bar.getByRole('button', { name: 'Play' }).click();
     await page.waitForTimeout(3_000);
     await expect(bar).toContainText(playing);

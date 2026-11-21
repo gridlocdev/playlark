@@ -1,5 +1,5 @@
 /**
- * The play queue (PRD §8.4, §8.5): the songs in play order, which one is playing, shuffle and repeat. Pure: every
+ * The play queue (PRD §8.4, §8.5): the songs in play order, which one is playing, shuffle and loop. Pure: every
  * change returns a new queue.
  */
 
@@ -57,7 +57,7 @@ export function current(q: Queue): string | undefined {
 }
 
 /**
- * The entry after this one, or null at the end. `auto`: the song ended by itself, so Repeat This Song plays it again;
+ * The entry after this one, or null at the end. `auto`: the song ended by itself, so Loop This Song plays it again;
  * Next pressed by hand moves on even then (§8.5).
  */
 export function next(q: Queue, auto = false): Queue | null {
@@ -172,13 +172,13 @@ function shuffleAfterCurrent(q: Queue, seed: number): Queue {
 
 const REPEATS: readonly Repeat[] = ['off', 'all', 'one'];
 
-/** Repeat This Song (⌥⌘R, §8.5): on plays the song again when it ends; it turns Repeat Queue off. */
-export function toggleRepeatSong(q: Queue): Queue {
+/** Loop This Song (⌥⌘R, §8.5): on plays the song again when it ends; it turns Loop Queue off. */
+export function toggleLoopSong(q: Queue): Queue {
   return { ...q, repeat: q.repeat === 'one' ? 'off' : 'one' };
 }
 
-/** Repeat Queue (⌥⇧⌘R, §8.5): on starts the queue again after the last song; it turns Repeat This Song off. */
-export function toggleRepeatQueue(q: Queue): Queue {
+/** Loop Queue (⌥⇧⌘R, §8.5): on starts the queue again after the last song; it turns Loop This Song off. */
+export function toggleLoopQueue(q: Queue): Queue {
   return { ...q, repeat: q.repeat === 'all' ? 'off' : 'all' };
 }
 
@@ -221,7 +221,7 @@ export function shuffled<T>(list: readonly T[], seed: number): T[] {
   return out;
 }
 
-/** What is kept between runs (§8.4): the queue with shuffle and repeat, and where in the song. */
+/** What is kept between runs (§8.4): the queue with shuffle and loop, and where in the song. */
 export interface SavedQueue {
   readonly format: 1;
   /** The music folder it belongs to. */

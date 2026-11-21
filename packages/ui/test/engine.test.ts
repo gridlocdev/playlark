@@ -72,14 +72,19 @@ const SONG = { path: 'a', duration: 1, sampleRate: 44100, encoderDelay: 1000 } a
 
 function setup() {
   const context = new FakeContext();
+  const events: string[] = [];
+  const element: string[] = [];
   const engine = new WebAudioEngine(context satisfies EngineContext, {
     node: new FakeNode() as unknown as AudioNode,
-    play: () => Promise.resolve(),
+    play: () => {
+      element.push('play');
+      return Promise.resolve();
+    },
+    pause: () => element.push('pause'),
   });
-  const events: string[] = [];
   engine.onAdvance = () => events.push('advance');
   engine.onEnded = () => events.push('ended');
-  return { context, engine, events };
+  return { context, engine, events, element };
 }
 
 describe('the Web Audio engine', () => {
@@ -133,6 +138,17 @@ describe('the Web Audio engine', () => {
     engine.clearNext();
     expect(context.sources[1]!.stopped).toBe(0);
     expect(context.gains[1]!.gain.events.at(-1)).toEqual(['set', 0.7, 0]);
+  });
+
+  it('pauses and plays the element Now Playing follows along with the song', async () => {
+    const { engine, element } = setup();
+    const song = await engine.decode(new ArrayBuffer(0), SONG);
+    engine.play(song, 0, 1);
+    await engine.pause();
+    await engine.resume();
+    await engine.pause();
+    engine.play(song, 0, 1);
+    expect(element).toEqual(['play', 'pause', 'play', 'pause', 'play']);
   });
 
   it('a new song fades the old one out over a few milliseconds instead of cutting it', async () => {
