@@ -2,7 +2,7 @@
  * Every command in the app (PRD §14). The keyboard, ⌘K, the menu bar, the now-playing bar's buttons, the
  * Keyboard Shortcuts window and docs/controls.md all come from this list.
  */
-import { CommandCatalog, SEEK_STEP, VOLUME_STEP, type CommandSpec } from '@playlark/ui';
+import { CommandCatalog, SEEK_STEP, VOLUME_STEP, isMac, type CommandSpec } from '@playlark/ui';
 import type { AppController, DialogKind } from './controller.ts';
 import { playlistCommands } from './playlistCommands.ts';
 import { addToQueue, playNext, removeFromQueue } from './queueActions.ts';
@@ -25,6 +25,7 @@ export const SONG_MENU: readonly string[] = [
   'song.addToPlaylist',
   'song.favourite',
   'song.info',
+  'song.reveal',
   '|',
   'song.goToAlbum',
   'song.goToArtist',
@@ -71,6 +72,13 @@ function favouriteTargets(app: AppController): string[] {
   if (app.cursor.value !== null) return app.selectedSongs().map((s) => s.path);
   const playing = app.player.currentPath.value;
   return playing === undefined ? [] : [playing];
+}
+
+/** What the system calls its file manager. */
+function revealTitle(): string {
+  const platform = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  if (isMac) return 'Show in Finder';
+  return /Windows/.test(platform) ? 'Show in File Explorer' : 'Show in Folder';
 }
 
 export function buildCommands(app: AppController): CommandCatalog {
@@ -198,6 +206,30 @@ export function buildCommands(app: AppController): CommandCatalog {
       },
       run: () => app.stats.toggleFavourite(favouriteTargets(app)),
     },
+    ...(app.reveal
+      ? [
+          {
+            id: 'song.reveal',
+            title: revealTitle(),
+            description: 'Show the selected song’s file in the system’s file manager.',
+            group: 'Song',
+            keywords: 'finder explorer file manager folder reveal locate open',
+            context: true,
+            enabled: () => app.selectedSongs().length === 1,
+            run: async () => {
+              const song = app.selectedSongs()[0];
+              if (!song || !app.reveal) return;
+              try {
+                await app.reveal(song.path);
+              } catch (e) {
+                app.say(`Couldn’t show the file: ${e instanceof Error ? e.message : String(e)}`, {
+                  tone: 'error',
+                });
+              }
+            },
+          } satisfies CommandSpec,
+        ]
+      : []),
     {
       id: 'song.info',
       title: 'Song Info…',
@@ -329,13 +361,23 @@ export function buildCommands(app: AppController): CommandCatalog {
     },
     {
       id: 'controls.repeat',
-      title: 'Repeat',
-      description: 'Go from Repeat Off to Repeat All (the whole queue) to Repeat One (this song).',
+      title: 'Repeat This Song',
+      description: 'Play this song again each time it ends, until you turn it off or press Next.',
       group: 'Controls',
       shortcuts: ['mod+alt+r'],
-      keywords: 'loop again one all',
-      checked: () => player.repeat.value !== 'off',
-      run: () => player.cycleRepeat(),
+      keywords: 'loop again one',
+      checked: () => player.repeat.value === 'one',
+      run: () => player.toggleRepeatSong(),
+    },
+    {
+      id: 'controls.repeatQueue',
+      title: 'Repeat Queue',
+      description: 'Play the queue again from the start when it ends.',
+      group: 'Controls',
+      shortcuts: ['mod+alt+shift+r'],
+      keywords: 'loop again all list',
+      checked: () => player.repeat.value === 'all',
+      run: () => player.toggleRepeatQueue(),
     },
     {
       id: 'queue.remove',

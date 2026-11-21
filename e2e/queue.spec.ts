@@ -62,9 +62,13 @@ test.describe('Play Next and Add to Queue', () => {
     await openApp(page);
     await playPaused(page, 'Rain on Tin');
     await runCommand(page, 'Clear Up Next');
-    await songs(page)
-      .getByRole('row', { name: /Night Bus/ })
-      .click({ button: 'right' });
+    const nightBus = songs(page).getByRole('row', { name: /Night Bus/ });
+    const row = (await nightBus.boundingBox())!;
+    await nightBus.click({ button: 'right', position: { x: 200, y: row.height / 2 } });
+    // The menu opens where the click was, over the page, not as buttons at the end of it.
+    const box = (await page.getByRole('menu').boundingBox())!;
+    expect(Math.abs(box.x - (row.x + 200))).toBeLessThan(4);
+    expect(Math.abs(box.y - (row.y + row.height / 2))).toBeLessThan(4);
     await page.getByRole('menu').getByRole('menuitem', { name: 'Add to Queue' }).click();
     await expect(page.locator('.pl-status')).toContainText('Added Night Bus to the queue.');
     await songs(page)
@@ -80,7 +84,7 @@ test.describe('Play Next and Add to Queue', () => {
 });
 
 test.describe('Shuffle and repeat', () => {
-  test('an album’s Shuffle button plays it shuffled, and the toggles cycle', async ({ page }) => {
+  test('an album’s Shuffle button plays it shuffled, and the toggles turn on and off', async ({ page }) => {
     const errors = watchErrors(page);
     await openApp(page);
     await page.getByRole('navigation', { name: 'Library' }).getByRole('button', { name: 'Albums' }).click();
@@ -100,17 +104,21 @@ test.describe('Shuffle and repeat', () => {
     await page.keyboard.press('ControlOrMeta+KeyS');
     await expect(shuffle).toHaveAttribute('aria-pressed', 'false');
 
-    await bar.getByRole('button', { name: 'Repeat' }).click();
-    await expect(bar.getByRole('button', { name: 'Repeat All' })).toHaveAttribute('aria-pressed', 'true');
+    const song = bar.getByRole('button', { name: 'Repeat this song' });
+    const all = bar.getByRole('button', { name: 'Repeat Queue' });
+    await expect(song).toHaveAttribute('title', /^Repeat this song \(/);
+    await all.click();
+    await expect(all).toHaveAttribute('aria-pressed', 'true');
     await page.keyboard.press('ControlOrMeta+Alt+KeyR');
-    await expect(bar.getByRole('button', { name: 'Repeat One' })).toBeVisible();
-    // Repeat One plays the 2 s song again instead of moving on.
+    await expect(song).toHaveAttribute('aria-pressed', 'true');
+    await expect(all).toHaveAttribute('aria-pressed', 'false');
+    // Repeat This Song plays the 2 s song again instead of moving on.
     await bar.getByRole('button', { name: 'Play' }).click();
     await page.waitForTimeout(3_000);
     await expect(bar).toContainText(playing);
     await expect(bar.getByRole('button', { name: 'Pause' })).toBeVisible();
-    await page.keyboard.press('ControlOrMeta+Alt+KeyR');
-    await expect(bar.getByRole('button', { name: 'Repeat' })).toHaveAttribute('aria-pressed', 'false');
+    await song.click();
+    await expect(song).toHaveAttribute('aria-pressed', 'false');
     expect(errors).toEqual([]);
   });
 });

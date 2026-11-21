@@ -14,7 +14,8 @@ import {
   clearUpNext,
   crossfadeFor,
   current,
-  cycleRepeat,
+  toggleRepeatQueue,
+  toggleRepeatSong,
   following,
   isShuffled,
   jumpTo,
@@ -197,9 +198,14 @@ export class Player {
     this.#edit(setShuffle(this.queue.peek(), !this.shuffle.peek(), this.#seed()));
   }
 
-  /** Repeat (⌥⌘R): Off → All → One (PRD §8.5). */
-  cycleRepeat(): void {
-    this.#edit(cycleRepeat(this.queue.peek()));
+  /** Repeat This Song (⌥⌘R, PRD §8.5). */
+  toggleRepeatSong(): void {
+    this.#edit(toggleRepeatSong(this.queue.peek()));
+  }
+
+  /** Repeat Queue (⌥⇧⌘R, PRD §8.5). */
+  toggleRepeatQueue(): void {
+    this.#edit(toggleRepeatQueue(this.queue.peek()));
   }
 
   /** Play Next (PRD §8.2). With nothing playing, the songs wait in the queue. */

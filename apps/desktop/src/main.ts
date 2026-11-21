@@ -27,6 +27,7 @@ import {
   type IndexFolder,
   listMusicFiles,
   playlistResult,
+  resolveInside,
   type PlaylistResult,
   renamePlaylistFile,
   tagResult,
@@ -68,10 +69,12 @@ interface HeadlessLog {
   readonly contextMenus: string[][];
   /** Links that would have opened in the browser. */
   readonly openedLinks: string[];
+  /** Files that would have been shown in Finder or File Explorer. */
+  readonly revealed: string[];
   /** Dialogs that would have been shown; each is answered with Cancel. */
   readonly dialogs: string[];
 }
-const headlessLog: HeadlessLog = { contextMenus: [], openedLinks: [], dialogs: [] };
+const headlessLog: HeadlessLog = { contextMenus: [], openedLinks: [], dialogs: [], revealed: [] };
 if (headless) (globalThis as { playlarkHeadless?: HeadlessLog }).playlarkHeadless = headlessLog;
 
 const paths = dataPaths(process.env, headless, () => {
@@ -238,6 +241,14 @@ function registerIpc(): void {
     await saveFolderChoice(folderFile, dir);
     await useFolder(dir);
     return folderInfo(dir);
+  });
+  // Show in Finder (§14): only a file inside the open folder, and never on the owner's screen in a headless run.
+  ipcMain.handle(Channels.revealSong, async (e, rel: unknown) => {
+    if (!trusted(e) || typeof rel !== 'string') return refuse();
+    if (!musicFolder) throw new Error('No music folder is open.');
+    const file = await resolveInside(musicFolder, rel);
+    if (headless) headlessLog.revealed.push(file);
+    else shell.showItemInFolder(file);
   });
   ipcMain.handle(Channels.loadSettings, (e) => (trusted(e) ? loadSettingsText(settingsFile) : refuse()));
   ipcMain.handle(Channels.saveSettings, (e, text: unknown) =>

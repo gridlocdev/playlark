@@ -1,8 +1,8 @@
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { indexFolder } from '../src/index.ts';
+import { indexFolder, lockPathOf } from '../src/index.ts';
 
 let dir: string;
 beforeEach(async () => {
@@ -27,6 +27,24 @@ describe('the index folder', () => {
     expect(await f.loadStats()).toBeNull();
     await f.saveStats('{"format":1,"folders":{}}');
     expect(await readFile(path.join(dir, 'stats.json'), 'utf8')).toBe('{"format":1,"folders":{}}');
+  });
+
+  it('saves stats under the lock file, keeping added times written since, and never over a bad file', async () => {
+    const f = indexFolder(dir);
+    const file = path.join(dir, 'stats.json');
+    // The CLI dated a new song after the app read the file; the app then saves a favourite.
+    await writeFile(file, '{"format":1,"folders":{"/m":{"a.mp3":{"added":5},"b.mp3":{"added":7}}}}');
+    await f.saveStats(
+      '{"format":1,"folders":{"/m":{"a.mp3":{"favourite":true,"added":5},"b.mp3":{"plays":1}}}}',
+    );
+    expect(JSON.parse(await readFile(file, 'utf8'))).toEqual({
+      format: 1,
+      folders: { '/m': { 'a.mp3': { favourite: true, added: 5 }, 'b.mp3': { plays: 1, added: 7 } } },
+    });
+    await expect(readFile(lockPathOf(file))).rejects.toThrow();
+    await writeFile(file, 'not json');
+    await expect(f.saveStats('{"format":1,"folders":{}}')).rejects.toThrow(/can’t be read/);
+    expect(await readFile(file, 'utf8')).toBe('not json');
   });
 
   it('stores each cover once, finds it by id, and prunes the unused ones', async () => {

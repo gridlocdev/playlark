@@ -61,6 +61,7 @@ export class AppController {
   readonly folders: FolderChooser | undefined;
   readonly cannotOpen: string | undefined;
   readonly preferences: Preferences | undefined;
+  readonly reveal: ((path: string) => Promise<void>) | undefined;
   /** The remembered folder that's gone, named in the Choose Folder question (§16.2). */
   readonly missingFolder = signal<string | null>(null);
   readonly source = signal<LibrarySource | null>(null);
@@ -144,6 +145,7 @@ export class AppController {
     this.folders = options.folders;
     this.cannotOpen = options.cannotOpen;
     this.preferences = options.preferences;
+    this.reveal = options.reveal;
     this.#index = options.index;
     this.#now = options.now ?? (() => new Date());
     this.player = new Player({

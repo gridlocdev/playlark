@@ -128,6 +128,7 @@ async function start(): Promise<void> {
     playback: () => prefs.value.peek(),
     onVolume: (volume) => prefs.set({ volume }),
     preferences: prefs,
+    ...(native ? { reveal: (path: string) => native.revealSong(path) } : {}),
   });
   effect(() => {
     const appearance = prefs.value.value.appearance;

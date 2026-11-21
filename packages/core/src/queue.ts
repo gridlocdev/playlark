@@ -57,7 +57,7 @@ export function current(q: Queue): string | undefined {
 }
 
 /**
- * The entry after this one, or null at the end. `auto`: the song ended by itself, so Repeat One plays it again;
+ * The entry after this one, or null at the end. `auto`: the song ended by itself, so Repeat This Song plays it again;
  * Next pressed by hand moves on even then (§8.5).
  */
 export function next(q: Queue, auto = false): Queue | null {
@@ -170,11 +170,16 @@ function shuffleAfterCurrent(q: Queue, seed: number): Queue {
   return { ...q, items: order.map((i) => q.items[i]!), rank: order };
 }
 
-const REPEAT_ORDER: readonly Repeat[] = ['off', 'all', 'one'];
+const REPEATS: readonly Repeat[] = ['off', 'all', 'one'];
 
-/** Repeat (⌥⌘R): Off → All → One (§8.5). */
-export function cycleRepeat(q: Queue): Queue {
-  return { ...q, repeat: REPEAT_ORDER[(REPEAT_ORDER.indexOf(q.repeat) + 1) % REPEAT_ORDER.length]! };
+/** Repeat This Song (⌥⌘R, §8.5): on plays the song again when it ends; it turns Repeat Queue off. */
+export function toggleRepeatSong(q: Queue): Queue {
+  return { ...q, repeat: q.repeat === 'one' ? 'off' : 'one' };
+}
+
+/** Repeat Queue (⌥⇧⌘R, §8.5): on starts the queue again after the last song; it turns Repeat This Song off. */
+export function toggleRepeatQueue(q: Queue): Queue {
+  return { ...q, repeat: q.repeat === 'all' ? 'off' : 'all' };
 }
 
 /** Drops songs that are no longer in the library, keeping the playing one where it can. */
@@ -230,7 +235,7 @@ export function saveQueue(root: string, queue: Queue, position: number): SavedQu
   return { format: 1, root, queue, position: Math.max(0, position) };
 }
 
-const isRepeat = (v: unknown): v is Repeat => REPEAT_ORDER.includes(v as Repeat);
+const isRepeat = (v: unknown): v is Repeat => REPEATS.includes(v as Repeat);
 
 /** Reads back a saved queue for `root`; anything wrong, or a queue for another folder, gives null. */
 export function parseSavedQueue(text: string, root: string): SavedQueue | null {

@@ -4,7 +4,9 @@
  */
 import { readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { keepAddedTimes, parseStatsFile, writeStatsFile } from '@playlark/core';
 import { writeAtomic } from './atomic.ts';
+import { withLockFile } from './lockFile.ts';
 
 export const INDEX_FILE = 'library.json';
 export const QUEUE_FILE = 'queue.json';
@@ -72,7 +74,18 @@ export function indexFolder(dir: string): IndexFolder {
     loadQueue: () => readText(QUEUE_FILE),
     saveQueue: (text) => writeAtomic(path.join(dir, QUEUE_FILE), text),
     loadStats: () => readText(STATS_FILE),
-    saveStats: (text) => writeAtomic(path.join(dir, STATS_FILE), text),
+    saveStats: (text) => {
+      const file = path.join(dir, STATS_FILE);
+      // Under the same lock file as the CLI, keeping the `added` times it wrote since this text was read.
+      return withLockFile(file, async () => {
+        const mine = parseStatsFile(text);
+        if (!mine) throw new Error('That is not a stats file Playlark reads.');
+        const before = await readText(STATS_FILE);
+        const onDisk = before === null ? new Map() : parseStatsFile(before);
+        if (!onDisk) throw new Error(`${file} can’t be read, so favourites and play counts were left alone.`);
+        await writeAtomic(file, writeStatsFile(keepAddedTimes(mine, onDisk)));
+      });
+    },
     saveCover: async (id, mime, data) => {
       const ext = EXTENSIONS[mime];
       if (!COVER_ID.test(id) || !ext) throw new Error('That is not a cover Playlark stores.');

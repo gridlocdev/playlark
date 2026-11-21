@@ -160,6 +160,29 @@ export function noteAdded(
   return out ?? stats;
 }
 
+/**
+ * What to write when the app saves `mine` over `onDisk`, a `stats.json` another process (the CLI) may have
+ * changed since the app read it: the app's stats win, but a song's `added` time that only the file has is kept.
+ */
+export function keepAddedTimes(
+  mine: ReadonlyMap<string, FolderStats>,
+  onDisk: ReadonlyMap<string, FolderStats>,
+): Map<string, FolderStats> {
+  const out = new Map<string, FolderStats>();
+  for (const [root, songs] of mine) {
+    const disk = onDisk.get(root);
+    let merged: Map<string, SongStats> | null = null;
+    for (const [path, s] of songs) {
+      const added = disk?.get(path)?.added ?? null;
+      if (s.added !== null || added === null) continue;
+      merged ??= new Map(songs);
+      merged.set(path, { ...s, added });
+    }
+    out.set(root, merged ?? songs);
+  }
+  return out;
+}
+
 const statsOf = (stats: FolderStats, song: Song) => stats.get(song.path) ?? NO_STATS;
 
 /** Favourites (§6.2), in the order of `songs`. */

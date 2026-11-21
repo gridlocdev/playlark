@@ -149,7 +149,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 
 ### §8.1 Now-playing bar
 
-- Cover, title and artist (click: go to the album; artist: go to the artist), Previous, Play/Pause, Next, a seek bar with elapsed and remaining time, Shuffle, Repeat, a volume slider, the favourite heart, and the queue button.
+- Cover, title and artist (click: go to the album; artist: go to the artist), Previous, Play/Pause, Next, a seek bar with elapsed and remaining time, Shuffle, Repeat This Song, Repeat Queue, a volume slider, the favourite heart, and the queue button.
 - While a song loads (§8.3): the play button shows a spinner and the bar shows "Loading…". Nothing playing: the bar shows no song and its buttons are disabled except Play, which plays the current view from the top.
 
 ### §8.2 Starting playback
@@ -178,7 +178,9 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 ### §8.5 Shuffle and repeat
 
 - **Shuffle** (⌘S) shuffles the entries after the current one (seeded Fisher–Yates) and remembers the original order. Turning it off restores the original order after the current song. Songs added with Play Next go right after the current song in both orders; Add to Queue goes at the end of both.
-- **Repeat** (⌥⌘R) cycles Off → All → One. All: after the last entry the queue starts again in the same order. One: the current song repeats (gaplessly, §8.3); Next and Previous still move.
+- Two toggles, each its own button in the now-playing bar; at most one is on, and turning one on turns the other off.
+  - **Repeat This Song** (⌥⌘R; hover text "Repeat this song"): the current song repeats (gaplessly, §8.3); Next and Previous still move.
+  - **Repeat Queue** (⌥⇧⌘R): after the last entry the queue starts again in the same order.
 
 ### §8.6 ReplayGain
 
@@ -188,7 +190,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 ### §8.7 Crossfade
 
 - Setting: Off (default), or 1–12 s. An equal-power fade between songs.
-- Never between consecutive tracks of the same album (same album, track n then n+1): those always join gaplessly. Never on Repeat One.
+- Never between consecutive tracks of the same album (same album, track n then n+1): those always join gaplessly. Never on Repeat This Song.
 - Next and Previous pressed by hand cut over with a 10 ms ramp, no crossfade. When the song they go to was already decoded ahead (§8.3), it starts at once.
 
 ## §9 Playlists
@@ -222,7 +224,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 
 ### §10.1 Storage
 
-- Kept in `stats.json` in the app's data folder (desktop) or the server's data folder (NAS, shared by every browser using that server), keyed by song path: `favourite`, `plays`, `lastPlayed`, `added`. Not in the music files. The desktop app and the NAS keep separate stats. A folder opened in the browser keeps its stats in IndexedDB, beside its index.
+- Kept in `stats.json` in the app's data folder (desktop) or the server's data folder (NAS, shared by every browser using that server), keyed by song path: `favourite`, `plays`, `lastPlayed`, `added`. Not in the music files. The desktop app and the NAS keep separate stats. The app and the CLI write it under the same lock file (§9.3); the app's stats win, but an `added` time only the file has (the CLI dated a new song) is kept. A folder opened in the browser keeps its stats in IndexedDB, beside its index.
 - Written atomically, at most every 2 s, and when the window closes.
 - Unlike the index, the stats are the user's data: a stats file that can't be read is never written over. The status bar says "Favourites and play counts won’t be kept: <reason>" and nothing is saved until the next start.
 
@@ -316,7 +318,7 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 | Controls | Seek Forward / Back 10 s                        | ⌥⌘→ / ⌥⌘←                   |
 | Controls | Volume Up / Down                                | ⌘↑ / ⌘↓                     |
 | Controls | Shuffle                                         | ⌘S                          |
-| Controls | Repeat (Off → All → One)                        | ⌥⌘R                         |
+| Controls | Repeat This Song / Repeat Queue                 | ⌥⌘R / ⌥⇧⌘R                  |
 | View     | Songs / Albums / Artists / Folders              | ⌘1 / ⌘2 / ⌘3 / ⌘4           |
 | View     | Back / Forward                                  | ⌘[ / ⌘]                     |
 | View     | Show Queue                                      | ⌥⌘U                         |

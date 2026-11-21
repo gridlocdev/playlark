@@ -25,7 +25,7 @@ test.describe('The phone layout', () => {
     await expect(now.getByRole('slider', { name: 'Position' })).toBeVisible();
     await expect(now.getByRole('button', { name: 'Shuffle' })).toBeVisible();
     await page.screenshot({ path: '.e2e-results/phone/player.png' });
-    await now.getByRole('button', { name: 'Queue' }).tap();
+    await now.getByRole('button', { name: 'Queue', exact: true }).tap();
     const queue = page.getByRole('complementary', { name: 'Queue' });
     await expect(queue).toBeVisible();
     await queue.getByRole('button', { name: 'Close Queue' }).tap();

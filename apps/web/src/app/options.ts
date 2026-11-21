@@ -24,6 +24,8 @@ export interface ControllerOptions {
   readonly onVolume?: (volume: number) => void;
   /** ReplayGain and crossfade (§8.6, §8.7). */
   readonly playback?: () => PlaybackSettings;
+  /** Shows a song's file in the system's file manager (the desktop app, §14). */
+  readonly reveal?: (path: string) => Promise<void>;
   /** The Settings window's values (§19). Absent: no Settings window. */
   readonly preferences?: Preferences;
   /** A seed for each shuffle; tests pin it. */

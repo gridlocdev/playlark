@@ -12,6 +12,7 @@ export const Channels = {
   loadSettings: 'playlark:load-settings',
   saveSettings: 'playlark:save-settings',
   setAppearance: 'playlark:set-appearance',
+  revealSong: 'playlark:reveal-song',
   listFiles: 'playlark:list-files',
   loadIndex: 'playlark:load-index',
   saveIndex: 'playlark:save-index',

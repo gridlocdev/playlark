@@ -76,6 +76,21 @@ test.describe('Desktop app', () => {
       await expect(bar).toContainText('Morning Tide');
       await expect(bar.getByRole('button', { name: 'Pause' })).toBeVisible();
       await expect(bar, 'the next song follows').toContainText('Salt Air', { timeout: 10_000 });
+      // Show in Finder from the song's right-click menu: a headless run records the file instead of opening Finder.
+      await songs(window)
+        .getByRole('row', { name: /Morning Tide/ })
+        .click({ button: 'right' });
+      await window
+        .getByRole('menu')
+        .getByRole('menuitem', { name: /^Show in (Finder|File Explorer|Folder)$/ })
+        .click();
+      await expect
+        .poll(() =>
+          app.evaluate(
+            () => (globalThis as { playlarkHeadless?: { revealed: string[] } }).playlarkHeadless?.revealed,
+          ),
+        )
+        .toEqual([path.join(realpathSync(DATA), 'Northwind Quartet/Harbour Lights/01 Morning Tide.mp3')]);
       // Open Music Folder asks the system for a folder: in a headless run the picker is recorded, not shown.
       await runCommand(window, 'Open Music Folder');
       await expect.poll(() => headlessLog(app)).toEqual(['Open Music Folder']);

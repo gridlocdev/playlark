@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('playlarkNative', {
     load: () => ipcRenderer.invoke('playlark:load-settings'),
     save: (text: string) => ipcRenderer.invoke('playlark:save-settings', text),
   },
+  revealSong: (path: string) => ipcRenderer.invoke('playlark:reveal-song', path),
   setAppearance: (appearance: string) => ipcRenderer.send('playlark:set-appearance', appearance),
   listFiles: () => ipcRenderer.invoke('playlark:list-files'),
   index: {

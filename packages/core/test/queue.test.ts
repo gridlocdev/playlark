@@ -5,7 +5,6 @@ import {
   addToQueue,
   clearUpNext,
   current,
-  cycleRepeat,
   following,
   isShuffled,
   move,
@@ -20,6 +19,8 @@ import {
   setShuffle,
   shuffleAll,
   shuffled,
+  toggleRepeatQueue,
+  toggleRepeatSong,
 } from '../src/index.ts';
 
 const LETTERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -46,10 +47,13 @@ describe('the queue', () => {
     expect(prune(q, () => false)).toEqual(EMPTY_QUEUE);
   });
 
-  it('Repeat goes Off, All, One; All starts again, One plays the song again only when it ends', () => {
-    const all = cycleRepeat(q);
-    const one = cycleRepeat(all);
-    expect([all.repeat, one.repeat, cycleRepeat(one).repeat]).toEqual(['all', 'one', 'off']);
+  it('Repeat Queue starts again; Repeat This Song plays the song again only when it ends', () => {
+    const all = toggleRepeatQueue(q);
+    const one = toggleRepeatSong(q);
+    expect([all.repeat, one.repeat]).toEqual(['all', 'one']);
+    expect([toggleRepeatQueue(all).repeat, toggleRepeatSong(one).repeat]).toEqual(['off', 'off']);
+    // Only one kind of repeat is on at a time.
+    expect([toggleRepeatSong(all).repeat, toggleRepeatQueue(one).repeat]).toEqual(['one', 'all']);
     const last = { ...all, index: 2 };
     expect(current(next(last)!)).toBe('a');
     expect(following({ ...one, index: 2 })).toBe('c');
@@ -140,7 +144,7 @@ describe('shuffle', () => {
 
 describe('the saved queue', () => {
   it('reads back what it wrote, and throws away anything else', () => {
-    const q = setShuffle(cycleRepeat(playFrom(LETTERS, 1)), true, 2);
+    const q = setShuffle(toggleRepeatQueue(playFrom(LETTERS, 1)), true, 2);
     const text = JSON.stringify(saveQueue('/Music', q, 12.5));
     expect(parseSavedQueue(text, '/Music')).toEqual({ format: 1, root: '/Music', queue: q, position: 12.5 });
     expect(parseSavedQueue(text, '/Other')).toBeNull();

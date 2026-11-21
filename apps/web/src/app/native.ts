@@ -32,6 +32,8 @@ export interface PlaylarkNative {
     load(): Promise<string | null>;
     save(text: string): Promise<void>;
   };
+  /** Shows a song's file in Finder, File Explorer or the file manager (PRD §14). */
+  revealSong(path: string): Promise<void>;
   /** Light or dark for the window's own parts (menus, title bar, system dialogs). */
   setAppearance(appearance: Appearance): void;
   /** Every music file in the open folder. Their bytes come from `app://playlark/media/<path>`. */

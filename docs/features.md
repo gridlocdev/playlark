@@ -56,7 +56,7 @@ Right-click a song, or the selected songs, for **Play Next** (right after the pl
 
 ## Shuffle and repeat
 
-**Shuffle** (⌘S) shuffles what comes after the playing song; turning it off puts the original order back. The **Shuffle** buttons on album, artist and folder pages play them shuffled. **Repeat** (⌥⌘R) goes Off, All, One: All starts the queue again after the last song, and One plays the song again without a gap.
+**Shuffle** (⌘S) shuffles what comes after the playing song; turning it off puts the original order back. The **Shuffle** buttons on album, artist and folder pages play them shuffled. **Repeat This Song** (⌥⌘R) plays the song again without a gap each time it ends; Next still moves on. **Repeat Queue** (⌥⇧⌘R) starts the queue again after the last song. Each is its own button in the now-playing bar, and turning one on turns the other off.
 
 ## Picking up where you left off
 

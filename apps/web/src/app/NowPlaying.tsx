@@ -87,13 +87,8 @@ export function NowPlaying({
             `pl-play${state === 'loading' ? ' pl-loading' : ''}`,
           )}
           {button('controls.next', 'skip-forward', 'Next')}
-          {button(
-            'controls.repeat',
-            repeat === 'one' ? 'repeat-1' : 'repeat',
-            repeat === 'one' ? 'Repeat One' : repeat === 'all' ? 'Repeat All' : 'Repeat',
-            'pl-toggle',
-            repeat !== 'off',
-          )}
+          {button('controls.repeat', 'repeat-1', 'Repeat this song', 'pl-toggle', repeat === 'one')}
+          {button('controls.repeatQueue', 'repeat', 'Repeat Queue', 'pl-toggle', repeat === 'all')}
         </div>
         <div class="pl-seek">
           <span class="pl-time">{formatTime(position)}</span>
