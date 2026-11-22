@@ -9,7 +9,7 @@ Playlark runs as a desktop app, as a web page that opens a folder on your comput
 
 ## Download
 
-Playlark isn't released yet, so there are no downloads. To build the desktop app yourself, run `just package-desktop` after `just setup`: it writes a `.dmg` and `.zip` on macOS, an `.exe` on Windows or an AppImage on Linux into `apps/desktop/release`. On macOS, `just install-desktop` copies it to `/Applications`.
+There are no prebuilt desktop downloads yet. The web client runs at https://gridloc.dev/apps/playlark/ in Chrome and Edge. To build the desktop app yourself, run `just package-desktop` after `just setup`: it writes a `.dmg` and `.zip` on macOS, an `.exe` on Windows or an AppImage on Linux into `apps/desktop/release`. On macOS, `just install-desktop` copies it to `/Applications`.
 
 ## Run it from source
 

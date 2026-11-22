@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (2026-11-22)
 
 - Open a music folder and see every MP3, FLAC, M4A (AAC and ALAC), Ogg Vorbis, Opus and WAV file in it, with titles, artists, albums and lengths read from the files' own tags.
 - Play songs with play, pause, next, previous, skip and volume, from the now-playing bar, the keyboard, media keys and the lock screen. Playing a song queues the list from there, and the queue panel shows what comes next.

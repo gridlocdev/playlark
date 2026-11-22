@@ -17,7 +17,7 @@ import { type Player, play, songsToPlay } from './play.ts';
 import { playlistCommand } from './playlists.ts';
 import { tagsCommand } from './tags.ts';
 
-export const VERSION = '0.1.0';
+export const VERSION = '1.0.0';
 
 export interface RunContext extends Platform {
   /** Standard output, one line at a time. */
