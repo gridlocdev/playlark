@@ -2,6 +2,8 @@
 
 Playlark is a TypeScript music player for a folder of MP3, FLAC, M4A, Ogg and WAV files. The same UI runs in the browser, in the NAS server's client and in the Electron app. The spec is [docs/plans/prd.md](docs/plans/prd.md). The code layout is in [docs/architecture.md](docs/architecture.md). The commands are in [docs/development.md](docs/development.md).
 
+Use the terms in [GLOSSARY.md](GLOSSARY.md) in code, docs and commit messages, and add a term there when a new concept appears.
+
 ## Gates
 
 - `just check` (the same as `pnpm check`) must pass before you commit. It runs:
@@ -33,7 +35,7 @@ Playlark is a TypeScript music player for a folder of MP3, FLAC, M4A, Ogg and WA
 ## Golden rules
 
 1. **The engine stays pure.** `packages/core` knows nothing about the DOM, Node, Preact or styling.
-2. **The files are the source of truth.** Playlark reads the music folder. It never changes a song file.
+2. **The files are the source of truth.** Playlark writes into the music folder only when you edit a playlist or a song's tags. A tag edit must read back as intended and leave the audio byte for byte the same, or the file is left as it was. The original goes to the trash, and Undo puts it back.
 3. **One command catalog.** Keys, ⌘K, context menus, the Electron menu bar and the Keyboard Shortcuts window all read it. Don't wire a key or a menu item past it.
 4. **The UI reaches songs only through a `LibrarySource`.** It never knows whether the songs are in memory, picked in the browser, on the NAS or on disk.
 5. **Confined access.**
