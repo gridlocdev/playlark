@@ -4,6 +4,7 @@
  */
 import { createHash } from 'node:crypto';
 import { type FSWatcher, watch } from 'node:fs';
+import path from 'node:path';
 import { type ScanProgress, type Song, coverIds, makeIndex, parseIndex, scanLibrary } from '@playlark/core';
 import { type IndexFolder, folderScanSource } from '@playlark/node-files';
 
@@ -35,6 +36,8 @@ export class ServerLibrary {
   #running: Promise<void> | null = null;
   #again = false;
   #watcher: FSWatcher | null = null;
+  /** Watches the folder above the music folder, for the music folder itself going away and coming back. */
+  #parentWatcher: FSWatcher | null = null;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #poller: ReturnType<typeof setInterval> | null = null;
   readonly #listeners = new Set<(e: LibraryEvent) => void>();
@@ -86,6 +89,7 @@ export class ServerLibrary {
 
   close(): void {
     this.#watcher?.close();
+    this.#parentWatcher?.close();
     if (this.#timer) clearTimeout(this.#timer);
     if (this.#poller) clearInterval(this.#poller);
     this.#listeners.clear();
@@ -131,21 +135,55 @@ export class ServerLibrary {
   }
 
   #watch(): void {
-    if (!this.#opts.poll) {
-      try {
-        this.#watcher = watch(this.#opts.root, { recursive: true }, () => this.#soon());
-        this.#watcher.on('error', () => {
-          this.#watcher?.close();
-          this.#watcher = null;
-          this.#startPolling();
-        });
-        return;
-      } catch (e) {
-        // Not every file system can be watched: read it again on a timer instead.
-        console.warn('Can’t watch the music folder, so it is read again every minute:', e);
-      }
+    if (this.#opts.poll) {
+      this.#startPolling();
+      return;
     }
-    this.#startPolling();
+    if (!this.#watchFolder()) return;
+    // On Linux a watcher follows the folder it was opened on, so a music folder that is deleted and made again
+    // (a share mounted again, a folder replaced) would go quiet. Its parent says when it comes back.
+    this.#parentWatcher = this.#watchParent();
+  }
+
+  /** Watches the music folder's parent for the folder itself; null when it can't (no permission, the file system root). */
+  #watchParent(): FSWatcher | null {
+    const { dir, base } = path.parse(path.resolve(this.#opts.root));
+    try {
+      const watcher = watch(dir, (_, name) => {
+        if (name !== base) return;
+        this.#watcher?.close();
+        this.#watcher = null;
+        this.#watchFolder();
+        this.#soon();
+      });
+      // Without it the folder watcher still works; only a replaced folder goes unnoticed.
+      watcher.on('error', () => watcher.close());
+      return watcher;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Watches the music folder; false when it can't be watched and is polled instead. A folder that is gone isn't watched. */
+  #watchFolder(): boolean {
+    try {
+      const watcher = watch(this.#opts.root, { recursive: true }, () => this.#soon());
+      watcher.on('error', () => {
+        watcher.close();
+        // A watcher on a folder that was replaced can fail late, after the new one took its place.
+        if (this.#watcher !== watcher) return;
+        this.#watcher = null;
+        this.#startPolling();
+      });
+      this.#watcher = watcher;
+      return true;
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return true;
+      // Not every file system can be watched: read it again on a timer instead.
+      console.warn('Can’t watch the music folder, so it is read again every minute:', e);
+      this.#startPolling();
+      return false;
+    }
   }
 
   #startPolling(): void {
