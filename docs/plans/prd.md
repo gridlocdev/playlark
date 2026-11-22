@@ -364,7 +364,8 @@ Every command is in the command catalog and reachable from ⌘K; the native menu
 ## §17 Browser (no server)
 
 - Chrome and Edge: **Open Music Folder…** uses the File System Access API; the permission is remembered and asked again on the next visit with one click. The index is kept in IndexedDB. Tag and playlist editing are off in this mode ("Edit tags and playlists in the desktop app or through the NAS server").
-- Other browsers show: "Opening a music folder needs Chrome or Edge. Use the desktop app or a Playlark server instead."
+- Firefox and Safari: **Open Music Folder…** uses `<input type="file" webkitdirectory>`, which hands over every file under the folder at once. The browser can't keep access to it, so the folder is picked again on each visit; the index in IndexedDB still saves reading the songs again. Tag and playlist editing are off, as above.
+- A browser with neither shows: "This browser can’t open a music folder. Use the desktop app or a Playlark server instead."
 
 ## §18 NAS server
 

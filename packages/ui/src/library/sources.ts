@@ -471,3 +471,35 @@ export function browserFolderLibrary(root: FileSystemDirectoryHandle): LibrarySo
     bytes: async (path) => (await fileAt(path)).arrayBuffer(),
   };
 }
+
+/**
+ * A folder picked with `<input type="file" webkitdirectory>`, for browsers without the File System Access API
+ * (Firefox, Safari; PRD §17). The browser hands over every file under the folder at once, each with its path from
+ * the folder's own name down. Read-only, and it can't be opened again on the next visit without picking it again.
+ */
+export function fileListLibrary(files: readonly File[]): LibrarySource {
+  const byPath = new Map<string, File>();
+  let name = '';
+  for (const file of files) {
+    const [top = '', ...rest] = file.webkitRelativePath.split('/');
+    name ||= top;
+    const path = rest.join('/');
+    if (rest.some(isSkippedName) || !isLibraryPath(path)) continue;
+    byPath.set(path, file);
+  }
+  const fileAt = (path: string): File => {
+    const file = byPath.get(path);
+    if (!file) throw new Error(`${path} is not in the folder.`);
+    return file;
+  };
+  return {
+    kind: 'browser',
+    name: name || 'Music',
+    list: () =>
+      Promise.resolve(
+        [...byPath].map(([path, f]): LibraryFile => ({ path, size: f.size, mtime: f.lastModified })),
+      ),
+    open: async (f) => fileSource(fileAt(f.path)),
+    bytes: async (path) => fileAt(path).arrayBuffer(),
+  };
+}

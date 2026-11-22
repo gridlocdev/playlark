@@ -10,7 +10,7 @@ Playlark plays a folder of your own music files: MP3, FLAC, M4A, Ogg Vorbis, Opu
 
 ## Getting started
 
-[Open Playlark in your browser](https://gridloc.dev/apps/playlark/) (Chrome or Edge) and pick a music folder, or run it from source with Node 22.18 or later, pnpm and [just](https://github.com/casey/just):
+[Open Playlark in your browser](https://gridloc.dev/apps/playlark/) and pick a music folder, or run it from source with Node 22.18 or later, pnpm and [just](https://github.com/casey/just):
 
 ```bash
 just setup && just run-desktop

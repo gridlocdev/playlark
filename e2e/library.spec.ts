@@ -1,5 +1,9 @@
 // The first slice: open the folder the server serves, list its songs, play them in order with a queue.
+import { fileURLToPath } from 'node:url';
 import { expect, nowPlaying, openApp, runCommand, songs, test, titles, watchErrors } from './fixtures.ts';
+
+/** The fixture folder itself, as a person would pick it in the browser's folder picker. */
+const FIXTURE = fileURLToPath(new URL('./fixtures/basic', import.meta.url));
 
 const ORDER = [
   'Rain on Tin',
@@ -22,6 +26,31 @@ test.describe('Opening a music folder', () => {
     // notes.txt isn't music, and hidden folders are skipped.
     expect(await titles(page)).not.toContain('secret');
     await expect(page).toHaveTitle(/Playlark/);
+    expect(errors).toEqual([]);
+  });
+
+  test('a browser without showDirectoryPicker (Firefox, Safari) opens a folder through the file picker', async ({
+    page,
+  }) => {
+    // No server and no File System Access API: the page is the static web client in Firefox or Safari.
+    await page.route('**/api/**', (route) => route.abort());
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'showDirectoryPicker', { value: undefined });
+    });
+    const errors = watchErrors(page);
+    await page.goto('/');
+    await expect(page.getByText('Choose a music folder to start.')).toBeVisible();
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Open Music Folder…' }).click();
+    await (await chooser).setFiles(FIXTURE);
+    await expect(page.locator('.pl-status')).toContainText('7 songs');
+    await expect(page.locator('.pl-status')).toContainText('basic');
+    expect(await titles(page)).toEqual(ORDER);
+    await songs(page)
+      .getByRole('row', { name: /Morning Tide/ })
+      .dblclick();
+    await expect(nowPlaying(page)).toContainText('Morning Tide');
+    await expect(page.getByRole('button', { name: 'Pause' }).first()).toBeVisible();
     expect(errors).toEqual([]);
   });
 });

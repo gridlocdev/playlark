@@ -14,7 +14,7 @@ just setup   # corepack enable, then pnpm install
 
 | Recipe | What it runs |
 | --- | --- |
-| `just run-web` | The web client on http://localhost:5173 with hot reload; it opens a folder you pick (Chrome and Edge) |
+| `just run-web` | The web client on http://localhost:5173 with hot reload; it opens a folder you pick |
 | `just run-server [dir]` | The NAS server on http://localhost:8830, serving the built client and a music folder (the fixtures by default) |
 | `just run-web-nas` | The web client with hot reload, its API proxied to `just run-server` |
 | `just run-desktop` | The desktop app (builds the web client first) |

@@ -4,7 +4,7 @@ What Playlark does today, named the way the scenarios in `e2e/` name them. The [
 
 ## Opening a music folder
 
-Playlark plays one folder of music and everything under it. At first start the desktop app asks whether to use your Music folder or choose another, and remembers the answer; when that folder is gone (a drive that isn't plugged in), it asks again, naming it. **Open Music Folder…** (⌘O) switches folders. The last three folders keep their library index, so switching back is quick. A Playlark server opens the folder it serves by itself. In Chrome and Edge the browser build opens a folder you pick. MP3, FLAC, M4A (AAC and ALAC), Ogg Vorbis, Opus and WAV files are listed; other files and hidden folders are skipped.
+Playlark plays one folder of music and everything under it. At first start the desktop app asks whether to use your Music folder or choose another, and remembers the answer; when that folder is gone (a drive that isn't plugged in), it asks again, naming it. **Open Music Folder…** (⌘O) switches folders. The last three folders keep their library index, so switching back is quick. A Playlark server opens the folder it serves by itself. The browser build opens a folder you pick. You pick it again on each visit; the songs already read are kept, so it opens quickly. MP3, FLAC, M4A (AAC and ALAC), Ogg Vorbis, Opus and WAV files are listed; other files and hidden folders are skipped.
 
 ## The song list
 

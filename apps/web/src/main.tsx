@@ -9,6 +9,7 @@ import {
   browserFolderLibrary,
   browserIndexStore,
   encodePath,
+  fileListLibrary,
   every,
   browserSettings,
   fileSettings,
@@ -18,6 +19,7 @@ import {
 } from '@playlark/ui';
 import { App } from './app/App.tsx';
 import { buildCommands } from './app/commands.ts';
+import { canPickFolderFiles, pickFolderFiles } from './app/folderInput.ts';
 import { AppController, type FolderChooser } from './app/controller.ts';
 import { startMediaSession } from './app/mediaSession.ts';
 import { Preferences, applyAppearance } from './app/preferences.ts';
@@ -67,6 +69,16 @@ const browserFolders: FolderChooser = {
   },
 };
 
+/** Firefox and Safari pick a folder with a file input instead, and hand over all its files at once (§17). */
+const inputFolders: FolderChooser = {
+  choose: async () => {
+    const files = await pickFolderFiles();
+    return files ? fileListLibrary(files) : null;
+  },
+};
+
+const pickableFolders = canPickFolder ? browserFolders : canPickFolderFiles() ? inputFolders : null;
+
 function desktopFolders(bridge: PlaylarkNative): FolderChooser {
   return {
     choose: async () => {
@@ -111,13 +123,13 @@ async function start(): Promise<void> {
       ? { folders: desktopFolders(native) }
       : nas
         ? {}
-        : canPickFolder
-          ? { folders: browserFolders }
+        : pickableFolders
+          ? { folders: pickableFolders }
           : {}),
-    ...(!native && !nas && !canPickFolder
+    ...(!native && !nas && !pickableFolders
       ? {
           cannotOpen:
-            'Opening a music folder needs Chrome or Edge. Use the desktop app or a Playlark server instead.',
+            'This browser can’t open a music folder. Use the desktop app or a Playlark server instead.',
         }
       : {}),
     index: native

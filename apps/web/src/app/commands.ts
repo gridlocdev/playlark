@@ -95,7 +95,7 @@ export function buildCommands(app: AppController): CommandCatalog {
     else app.show(kind);
   };
   const specs: CommandSpec[] = [
-    // The NAS serves one folder; only the desktop app and Chrome or Edge open one of the user's choice.
+    // The NAS serves one folder; the desktop app and the browser build open one of the user's choice.
     ...(app.folders
       ? [
           {

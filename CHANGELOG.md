@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Firefox and Safari open a music folder in the browser build too, through the browser's folder picker.
+
 ## 1.0.0 (2026-11-22)
 
 - Open a music folder and see every MP3, FLAC, M4A (AAC and ALAC), Ogg Vorbis, Opus and WAV file in it, with titles, artists, albums and lengths read from the files' own tags.

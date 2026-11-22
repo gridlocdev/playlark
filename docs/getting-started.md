@@ -9,7 +9,7 @@ Playlark runs as a desktop app, as a web page that opens a folder on your comput
 
 ## Download
 
-There are no prebuilt desktop downloads yet. The web client runs at https://gridloc.dev/apps/playlark/ in Chrome and Edge. To build the desktop app yourself, run `just package-desktop` after `just setup`: it writes a `.dmg` and `.zip` on macOS, an `.exe` on Windows or an AppImage on Linux into `apps/desktop/release`. On macOS, `just install-desktop` copies it to `/Applications`.
+There are no prebuilt desktop downloads yet. The web client runs at https://gridloc.dev/apps/playlark/ in any current desktop browser. To build the desktop app yourself, run `just package-desktop` after `just setup`: it writes a `.dmg` and `.zip` on macOS, an `.exe` on Windows or an AppImage on Linux into `apps/desktop/release`. On macOS, `just install-desktop` copies it to `/Applications`.
 
 ## Run it from source
 
@@ -22,7 +22,7 @@ Without just, run `corepack enable && pnpm install`, then the commands in the `j
 
 ## In the browser
 
-`just run-web` serves the web client on http://localhost:5173. In Chrome and Edge it opens a folder you pick from your computer. Other browsers can't open a local folder; use the server instead.
+`just run-web` serves the web client on http://localhost:5173. It opens a folder you pick from your computer. It works in Chrome, Edge, Firefox and Safari, and your files stay on your computer.
 
 ## Run it on a NAS (Docker)
 

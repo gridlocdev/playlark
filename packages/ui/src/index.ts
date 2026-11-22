@@ -37,6 +37,7 @@ export { ListPopup, listStep } from './components/ListPopup.tsx';
 export { PopupMenu } from './components/PopupMenu.tsx';
 export {
   browserFolderLibrary,
+  fileListLibrary,
   encodePath,
   memoryLibrary,
   connectServer,
