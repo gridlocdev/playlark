@@ -58,6 +58,8 @@ just package-desktop-dir  # an unpacked app only, faster
 just install-desktop      # macOS: package and copy to /Applications; the old copy goes to the Trash. If Playlark is running, it asks to quit it and reopens it after
 ```
 
+Packaging flips the app's Electron fuses before it is signed (`apps/desktop/scripts/fuses.mjs`): `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect` do nothing in a packaged app, and it loads only its own `app.asar`. Check them with `pnpm --filter @playlark/desktop exec electron-fuses read --app <path to the app>`. Because `--inspect` is off, Playwright's `_electron` can't drive a packaged app; drive it over `--remote-debugging-port` (as `just run-desktop-headless` does) or test the unpackaged build.
+
 ## App icon
 
 `assets/icon.svg` is the source of every icon. After changing it, run `just icons` (needs Inkscape; `icon.icns` needs macOS) and commit what it writes: `apps/desktop/build/icon.{icns,ico,png}` and the web app's icons in `apps/web/public`.

@@ -13,6 +13,7 @@
     "package": "pnpm build && electron-builder --config electron-builder.yml"
   },
   "devDependencies": {
+    "@electron/fuses": "2.1.3",
     "@playlark/core": "workspace:*",
     "@playlark/node-files": "workspace:*",
     "@playlark/web": "workspace:*",
