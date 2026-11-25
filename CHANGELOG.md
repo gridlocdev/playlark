@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Firefox and Safari open a music folder in the browser build too, through the browser's folder picker.
+- **Press a Shortcut…** in the Keyboard Shortcuts window (⌘/) shows which command a key runs, without running it. Esc or **Stop** ends it.
+- The desktop app turns off Electron's Node.js switches (`ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, `--inspect`) and loads only its own code.
+- If you build Playlark yourself, `just install-desktop` offers to quit a running copy and opens it again after installing.
 
 ## 1.0.0 (2026-11-22)
 

@@ -439,6 +439,14 @@ kbd {
 }
 
 /* Keyboard Shortcuts */
+.pl-probe {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: var(--pl-radius);
+  background: var(--pl-accent-soft);
+  font-weight: 600;
+}
+
 .pl-shortcuts {
   columns: 2 260px;
   column-gap: 28px;

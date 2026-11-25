@@ -1,5 +1,13 @@
 import { useMemo, useState } from 'preact/hooks';
-import { Dialog, ListPopup, filterEntries, isMac, type CommandCatalog, type MenuEntry } from '@playlark/ui';
+import {
+  Dialog,
+  ListPopup,
+  filterEntries,
+  isMac,
+  type CommandCatalog,
+  type MenuEntry,
+  type ProbeResult,
+} from '@playlark/ui';
 import type { AppController } from './controller.ts';
 import { AddToPlaylistDialog, ConflictDialog } from './PlaylistUI.tsx';
 import { shortcutGroups } from './shortcuts.ts';
@@ -106,17 +114,42 @@ function ShortcutsDialog({
   readonly catalog: CommandCatalog;
 }) {
   const groups = shortcutGroups(catalog, isMac);
+  const probe = app.keyProbe;
+  const probing = probe.on.value;
+  // Keys go back to the app as soon as this window is no longer the one showing.
+  const startProbing = () =>
+    probe.start(
+      window,
+      catalog,
+      () => app.dialog.peek() === 'shortcuts' && app.playlists.conflict.peek() === null,
+    );
   return (
     <Dialog
       title="Keyboard Shortcuts"
       class="pl-dialog-wide"
       onClose={() => app.close()}
       actions={
-        <button type="button" class="pl-button pl-button-primary" onClick={() => app.close()}>
-          Close
-        </button>
+        <>
+          {probing ? (
+            <button type="button" class="pl-button" onClick={() => probe.stop()}>
+              Stop
+            </button>
+          ) : (
+            <button type="button" class="pl-button" onClick={startProbing}>
+              Press a Shortcut…
+            </button>
+          )}
+          <button type="button" class="pl-button pl-button-primary" onClick={() => app.close()}>
+            Close
+          </button>
+        </>
       }
     >
+      {probing && (
+        <p class="pl-probe" role="status">
+          {probeText(probe.result.value, catalog)}
+        </p>
+      )}
       <div class="pl-shortcuts">
         {groups.map((g) => (
           <section key={g.title}>
@@ -143,6 +176,19 @@ function ShortcutsDialog({
       </div>
     </Dialog>
   );
+}
+
+/** The line "press a shortcut" shows for the last key pressed. */
+function probeText(found: ProbeResult | null, catalog: CommandCatalog): string {
+  if (!found) return 'Press a shortcut to see what it does. Press Esc or Stop to finish.';
+  switch (found.kind) {
+    case 'command':
+      return `${catalog.keys(found.command, isMac).join(' ')}: ${found.command.title.replace(/…$/, '')}`;
+    case 'first':
+      return `${found.keys.join(' ')}: press the next key…`;
+    case 'none':
+      return 'No command uses that key.';
+  }
 }
 
 /** The files the last scan couldn't read, each with the reason (PRD §3.3). */

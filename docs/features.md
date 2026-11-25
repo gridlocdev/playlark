@@ -106,6 +106,10 @@ On a screen narrower than 700 px, the sidebar gives way to a tab bar at the bott
 
 On a Playlark server, the browser keeps the app's own files (never music), so **Add to Home Screen** gives a full-screen app with its own icon, and it still opens with no network.
 
+## Keyboard shortcuts
+
+Every command has a key, listed by Help › Keyboard Shortcuts (⌘/), and ⌘K runs any command by name. In the Keyboard Shortcuts window, **Press a Shortcut…** shows which command a key runs without running it, or that no command uses it. Esc or **Stop** ends it.
+
 ## Settings
 
 Settings… (⌘, — in the app menu on macOS) sets the appearance (System, Light or Dark), ReplayGain (Off, Track or Album) with a pre-amp, a crossfade of up to 12 seconds, and whether the folder is read again at start. Each change takes effect at once. The desktop app keeps them in `settings.json` in its data folder; the browser keeps them in its own storage.

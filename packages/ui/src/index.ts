@@ -29,6 +29,14 @@ export {
   type ShortcutEvent,
 } from './commands/shortcut.ts';
 export { keyFocus, listenForKeys } from './commands/keys.ts';
+export {
+  KeyProbe,
+  probeKey,
+  startProbe,
+  type ProbeEvent,
+  type ProbeOptions,
+  type ProbeResult,
+} from './commands/probe.ts';
 export { after, debounce, every, wait } from './schedule.ts';
 export { Dialog } from './components/Dialog.tsx';
 export { focusables, trapIndex, trapTab } from './components/focusTrap.ts';

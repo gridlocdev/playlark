@@ -95,3 +95,5 @@ Right-click a playlist in the sidebar for **Play Playlist**, **Shuffle Playlist*
 | Keyboard Shortcuts | **⌘/** | **Ctrl+/**      |
 | Command menu       | **⌘K** | **Ctrl+K**      |
 | Close a dialog     | **⎋**  | **Esc**         |
+
+In the Keyboard Shortcuts window, **Press a Shortcut…** shows what a key does instead of doing it. **⎋** (**Esc**) or **Stop** ends it.

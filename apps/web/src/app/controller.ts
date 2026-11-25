@@ -18,7 +18,7 @@ import {
   type Song,
   type SongColumn,
 } from '@playlark/core';
-import { Player, debounce, every, type IndexStore, type LibrarySource } from '@playlark/ui';
+import { KeyProbe, Player, debounce, every, type IndexStore, type LibrarySource } from '@playlark/ui';
 import { Covers } from './covers.ts';
 import { loadIndexSongs, saveIndexSongs } from './libraryIndex.ts';
 import { Notices, type Notice } from './notices.ts';
@@ -114,6 +114,8 @@ export class AppController {
   /** Read out by the status bar's live region. */
   readonly announcement = this.#notices.announcement;
   readonly dialog = signal<DialogKind | null>(null);
+  /** The Keyboard Shortcuts window's "press a shortcut" mode; any dialog change ends it. */
+  readonly keyProbe = new KeyProbe();
   readonly queueShown = signal(false);
   /** The Up Next entry the queue panel's cursor is on (an index in the queue), or null. */
   readonly queueCursor = signal<number | null>(null);
@@ -563,10 +565,12 @@ export class AppController {
 
   /** Opens a dialog; the one open now closes. */
   show(kind: DialogKind): void {
+    this.keyProbe.stop();
     this.dialog.value = kind;
   }
 
   close(): void {
+    this.keyProbe.stop();
     this.dialog.value = null;
   }
 
