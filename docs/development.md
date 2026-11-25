@@ -55,7 +55,7 @@ The tests use short generated tones with made-up tags, never real music. `just f
 ```bash
 just package-desktop      # .dmg and .zip on macOS, .exe on Windows, AppImage on Linux, in apps/desktop/release
 just package-desktop-dir  # an unpacked app only, faster
-just install-desktop      # macOS: package and copy to /Applications; the old copy goes to the Trash
+just install-desktop      # macOS: package and copy to /Applications; the old copy goes to the Trash. If Playlark is running, it asks to quit it and reopens it after
 ```
 
 ## App icon

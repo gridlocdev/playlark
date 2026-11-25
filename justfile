@@ -80,7 +80,8 @@ package-desktop: build-web
 package-desktop-dir: build-web
     pnpm --filter @playlark/desktop package --dir
 
-# Package and install into /Applications (macOS). The old copy goes to the Trash.
+# Package and install into /Applications (macOS). The old copy goes to the Trash. If Playlark is running, it
+# asks to quit it first and opens it again afterwards.
 [group('build')]
 [macos]
 install-desktop: package-desktop-dir
@@ -89,9 +90,26 @@ install-desktop: package-desktop-dir
     target="/Applications/{{ app_name }}.app"
     built=$(ls -d "{{ release }}"/mac*/"{{ app_name }}.app" | head -1)
     # Anchored, so a shell command that merely mentions the path does not count.
-    if pgrep -f "^$target/Contents/MacOS/" >/dev/null; then
-      echo "{{ app_name }} is running — quit it first, then run this again." >&2
-      exit 1
+    running() { pgrep -f "^$target/Contents/MacOS/" >/dev/null; }
+    restart=""
+    if running; then
+      # Ask in a native dialog; Cancel (or Escape) makes osascript fail, and the install stops.
+      if ! osascript >/dev/null 2>&1 <<'APPLESCRIPT'
+    display dialog "{{ app_name }} is running. Quit it, install the new version and open it again? The queue comes back on the same song." with title "Install {{ app_name }}" buttons {"Cancel", "Install and Restart"} default button "Install and Restart" cancel button "Cancel" with icon caution
+    APPLESCRIPT
+      then
+        echo "Not installed: {{ app_name }} is still running." >&2
+        exit 1
+      fi
+      # A normal quit, so every window saves before it closes (the same as ⌘Q).
+      osascript -e "tell application \"$target\" to quit" >/dev/null
+      for _ in $(seq 60); do running || break; sleep 0.5; done
+      if running; then
+        echo "{{ app_name }} didn't quit (a window may be asking something). Quit it, then run this again." >&2
+        exit 1
+      fi
+      echo "Quit {{ app_name }}."
+      restart=1
     fi
     trashed=""
     if [ -d "$target" ]; then
@@ -101,10 +119,15 @@ install-desktop: package-desktop-dir
     fi
     ditto "$built" "$target"
     lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+    # Only the installed copy should answer "Open With" for the app's file types.
     "$lsregister" -u "$PWD/$built" 2>/dev/null || true
     if [ -n "$trashed" ]; then "$lsregister" -u "$trashed" 2>/dev/null || true; fi
     "$lsregister" -f "$target"
     echo "Installed $target"
+    if [ -n "$restart" ]; then
+      open "$target"
+      echo "Reopened {{ app_name }}."
+    fi
 
 # ── Quality ───────────────────────────────────────────────────────────────
 
