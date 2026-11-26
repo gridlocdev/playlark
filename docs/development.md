@@ -58,7 +58,7 @@ just package-desktop-dir  # an unpacked app only, faster
 just install-desktop      # macOS: package and copy to /Applications; the old copy goes to the Trash. If Playlark is running, it asks to quit it and reopens it after
 ```
 
-Packaging flips the app's Electron fuses before it is signed (`electronFuses` in `apps/desktop/electron-builder.yml`): `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect` do nothing in a packaged app, it loads only its own `app.asar` and checks it hasn't changed, cookies are encrypted, and `file://` pages get no extra privileges. Check them with `npx @electron/fuses read --app <path to the app>`. Because `--inspect` is off, Playwright's `_electron` can't drive a packaged app; drive it over `--remote-debugging-port` (as `just run-desktop-headless` does) or test the unpackaged build.
+Packaging flips the app's Electron fuses before it is signed (`electronFuses` in `apps/desktop/electron-builder.yml`): `ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS` and `--inspect` do nothing in a packaged app, it loads only its own `app.asar` and checks it hasn't changed, and `file://` pages get no extra privileges. Check them with `npx @electron/fuses read --app <path to the app>`. Because `--inspect` is off, Playwright's `_electron` can't drive a packaged app; drive it over `--remote-debugging-port` (as `just run-desktop-headless` does) or test the unpackaged build.
 
 ## App icon
 
