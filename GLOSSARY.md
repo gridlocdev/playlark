@@ -30,6 +30,10 @@ Playlark is a music player for one folder of music files. It lists the songs fro
 
 **Now-playing bar**: The bar along the bottom of the window: the playing song, the playback buttons, the progress bar and the volume. _Avoid_: player bar, transport, footer
 
+**Mini bar**: The **Now-playing bar** in the phone layout: the playing song with play and next. **⌃** opens the **Full-screen player**. _Avoid_: mini player
+
+**Full-screen player**: The phone layout's page for the playing song: its cover, the seek bar, **Shuffle**, the loop modes, the ♥ and the **Queue**. _Avoid_: now-playing screen
+
 **Shuffle**: A mode that plays **Up Next** in a random order. Turning it off puts the original order back. _Avoid_: random
 
 **Loop This Song**: A mode that plays the same song again, without a gap, each time it ends. `Repeat` `'one'` in the code. _Avoid_: repeat one, repeat this song
@@ -57,6 +61,16 @@ Playlark is a music player for one folder of music files. It lists the songs fro
 **Song Info**: The dialog that shows the selected songs' tags and cover, and edits them in the desktop app and on a **Server**. _Avoid_: tag editor, properties, get info
 
 **Trash**: Playlark's own folder in its data folder where a deleted **Playlist** or the original of a retagged **Song** stays for 30 days, so Undo can put it back. _Avoid_: recycle bin, backup
+
+### The window
+
+**Status bar**: The line along the bottom of the window for the latest notice (with Undo where an undo exists), scanning progress, the number of **Songs** and the **Music folder**'s name. Playlark has no pop-up toasts. _Avoid_: toast, snackbar
+
+**Command menu**: The search field that ⌘K opens over the window, which runs any **Command** by name. _Avoid_: command palette, launcher
+
+**Keyboard Shortcuts window**: The dialog (⌘/) that lists every **Command** with its keys. Its **Press a Shortcut…** mode names the **Command** a key runs without running it. _Avoid_: shortcut list, cheat sheet
+
+**Cursor row**: The row in the song list or **Up Next** that the arrow keys move from. While the list has the keyboard it has the focus ring, also when several songs are selected. _Avoid_: focused row, current row
 
 ### Ways to run it
 
