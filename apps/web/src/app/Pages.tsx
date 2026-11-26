@@ -1,10 +1,12 @@
-import { useRef, useState } from 'preact/hooks';
-import { fold, type Album, type Artist, type CoverRef, type Folder, type Song } from '@playlark/core';
-import { formatCount, formatTime, Icon, useVirtualRows, type CommandCatalog } from '@playlark/ui';
+import { useState } from 'preact/hooks';
+import { fold, type Album, type Artist, type Folder, type Song } from '@playlark/core';
+import { formatCount, formatTime, Icon, type CommandCatalog } from '@playlark/ui';
+import { AlbumGrid, AlbumShelf, ArtistList, Cover, albumCount, roving, wrapKeys } from './Browse.tsx';
 import type { AppController } from './controller.ts';
 import { collection, type CollectionKind } from './Collections.tsx';
 import { PlaylistsPage } from './Phone.tsx';
 import { LIST_COLUMNS, SongList } from './SongList.tsx';
+import { listFocusId } from './listFocus.ts';
 import type { View } from './views.ts';
 
 /** How many artists and albums search shows before "Show all" (§6.4). */
@@ -136,24 +138,6 @@ function emptyText(app: AppController): string | null {
   return `No music found in ${source.name}. Playlark plays MP3, FLAC, M4A, Ogg and WAV files.`;
 }
 
-/** A cover, or the placeholder with a note glyph (§4.6). */
-export function Cover({
-  app,
-  cover,
-  large = false,
-}: {
-  readonly app: AppController;
-  readonly cover: CoverRef | undefined;
-  readonly large?: boolean;
-}) {
-  const url = app.coverOf(cover);
-  return (
-    <div class={`pl-cover${large ? ' pl-cover-large' : ''}`} aria-hidden="true">
-      {url ? <img src={url} alt="" loading="lazy" /> : <Icon name="music" />}
-    </div>
-  );
-}
-
 /** A page's Play and Shuffle buttons (§8.2). `songs` is read on the click, so it's the page's songs then. */
 export function PlayButtons({
   app,
@@ -224,84 +208,6 @@ function PlaylistPage({ app, path }: { readonly app: AppController; readonly pat
 }
 
 export const songCount = (n: number) => (n === 1 ? '1 song' : `${formatCount(n)} songs`);
-const albumCount = (n: number) => (n === 1 ? '1 album' : `${formatCount(n)} albums`);
-
-/** A card's width and height in px, the gap included. */
-const CARD_WIDTH = 176;
-const CARD_HEIGHT = 224;
-const GRID_PADDING = 32;
-
-function AlbumCard({ app, album }: { readonly app: AppController; readonly album: Album }) {
-  return (
-    <button
-      type="button"
-      class="pl-card"
-      title={`${album.title} – ${album.artist}`}
-      onClick={() => app.navigate({ kind: 'album', key: album.key })}
-    >
-      <Cover app={app} cover={album.cover} />
-      <span class="pl-card-title">{album.title}</span>
-      <span class="pl-card-sub">{album.artist}</span>
-    </button>
-  );
-}
-
-/** Albums as a grid of covers (§6.2), drawing only the rows in view. */
-function AlbumGrid({
-  app,
-  albums,
-  label,
-}: {
-  readonly app: AppController;
-  readonly albums: readonly Album[];
-  readonly label: string;
-}) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const [columns, setColumns] = useState(4);
-  const rows = Math.ceil(albums.length / columns);
-  const { start, end, width } = useVirtualRows(scroller, rows, CARD_HEIGHT, -1);
-  const fit = Math.max(1, Math.floor((width - GRID_PADDING) / CARD_WIDTH));
-  if (fit !== columns) setColumns(fit);
-  return (
-    <div class="pl-grid-scroll" ref={scroller}>
-      <section class="pl-album-grid" aria-label={label}>
-        <div style={{ height: `${start * CARD_HEIGHT}px` }} />
-        {Array.from({ length: end - start }, (_, i) => {
-          const row = start + i;
-          return (
-            <div key={row} class="pl-card-row" style={{ gridTemplateColumns: `repeat(${columns}, 160px)` }}>
-              {albums.slice(row * columns, row * columns + columns).map((a) => (
-                <AlbumCard key={a.key} app={app} album={a} />
-              ))}
-            </div>
-          );
-        })}
-        <div style={{ height: `${(rows - end) * CARD_HEIGHT}px` }} />
-      </section>
-    </div>
-  );
-}
-
-/** A few albums in a row that wraps, for artist pages and search. */
-function AlbumShelf({
-  app,
-  albums,
-  label,
-}: {
-  readonly app: AppController;
-  readonly albums: readonly Album[];
-  readonly label: string;
-}) {
-  return (
-    <div class="pl-shelf" role="list" aria-label={label}>
-      {albums.map((a) => (
-        <div role="listitem" key={a.key}>
-          <AlbumCard app={app} album={a} />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function AlbumPage({ app, album }: { readonly app: AppController; readonly album: Album }) {
   const lib = app.library.value;
@@ -360,37 +266,23 @@ function ArtistPage({ app, artist }: { readonly app: AppController; readonly art
         </div>
       </header>
       <h3 class="pl-section-title">Albums</h3>
-      <AlbumShelf app={app} albums={artist.albums} label="Albums" />
+      <AlbumShelf
+        app={app}
+        albums={artist.albums}
+        label="Albums"
+        id={listFocusId({ kind: 'artist', key: artist.key })!}
+      />
       {artist.appearsOn.length > 0 && (
         <>
           <h3 class="pl-section-title">Appears On</h3>
-          <AlbumShelf app={app} albums={artist.appearsOn} label="Appears On" />
+          <AlbumShelf
+            app={app}
+            albums={artist.appearsOn}
+            label="Appears On"
+            id={`artist:${artist.key}:appearsOn`}
+          />
         </>
       )}
-    </div>
-  );
-}
-
-/** Each album artist with their album count (§6.2), drawing only the rows in view. */
-const ARTIST_ROW = 36;
-
-function ArtistList({ app, artists }: { readonly app: AppController; readonly artists: readonly Artist[] }) {
-  const scroller = useRef<HTMLDivElement>(null);
-  const { start, end } = useVirtualRows(scroller, artists.length, ARTIST_ROW, -1);
-  return (
-    <div class="pl-grid-scroll" ref={scroller}>
-      <ul class="pl-artists" aria-label="Artists">
-        <li style={{ height: `${start * ARTIST_ROW}px` }} aria-hidden="true" />
-        {artists.slice(start, end).map((a) => (
-          <li key={a.key}>
-            <button type="button" onClick={() => app.navigate({ kind: 'artist', key: a.key })}>
-              <span>{a.name}</span>
-              <span class="pl-card-sub">{albumCount(a.albums.length)}</span>
-            </button>
-          </li>
-        ))}
-        <li style={{ height: `${(artists.length - end) * ARTIST_ROW}px` }} aria-hidden="true" />
-      </ul>
     </div>
   );
 }
@@ -399,6 +291,7 @@ function ArtistList({ app, artists }: { readonly app: AppController; readonly ar
 function FolderPage({ app, folder }: { readonly app: AppController; readonly folder: Folder }) {
   const parts = folder.path ? folder.path.split('/') : [];
   const top = app.source.value?.name ?? 'Music';
+  const folders = app.lists.get(listFocusId({ kind: 'folders', path: folder.path })!);
   return (
     <div class="pl-page">
       <header class="pl-folder-head">
@@ -431,10 +324,18 @@ function FolderPage({ app, folder }: { readonly app: AppController; readonly fol
         </div>
       </header>
       {folder.folders.length > 0 && (
-        <ul class="pl-folders" aria-label="Folders">
-          {folder.folders.map((f) => (
+        <ul
+          class="pl-folders"
+          aria-label="Folders"
+          onKeyDown={(e) => folders.keyDown(e, folder.folders.length)}
+        >
+          {folder.folders.map((f, i) => (
             <li key={f.path}>
-              <button type="button" onClick={() => app.navigate({ kind: 'folders', path: f.path })}>
+              <button
+                type="button"
+                {...roving(folders, i, folder.folders.length)}
+                onClick={() => app.navigate({ kind: 'folders', path: f.path })}
+              >
                 <Icon name="folder" /> {f.name}
               </button>
             </li>
@@ -455,6 +356,7 @@ function SearchPage({ app, query }: { readonly app: AppController; readonly quer
     return <Gone text={`Nothing matches “${query}”.`} />;
   const artists = allArtists ? results.artists : results.artists.slice(0, SEARCH_ARTISTS);
   const albums = allAlbums ? results.albums : results.albums.slice(0, SEARCH_ALBUMS);
+  const chips = app.lists.get('search:artists');
   return (
     <div class="pl-page">
       <div class="pl-search-top">
@@ -468,10 +370,14 @@ function SearchPage({ app, query }: { readonly app: AppController; readonly quer
                 </button>
               )}
             </h3>
-            <ul class="pl-chips">
-              {artists.map((a) => (
+            <ul class="pl-chips" onKeyDown={wrapKeys(chips, artists.length)}>
+              {artists.map((a, i) => (
                 <li key={a.key}>
-                  <button type="button" onClick={() => app.navigate({ kind: 'artist', key: a.key })}>
+                  <button
+                    type="button"
+                    {...roving(chips, i, artists.length)}
+                    onClick={() => app.navigate({ kind: 'artist', key: a.key })}
+                  >
                     {a.name}
                   </button>
                 </li>
@@ -489,7 +395,7 @@ function SearchPage({ app, query }: { readonly app: AppController; readonly quer
                 </button>
               )}
             </h3>
-            <AlbumShelf app={app} albums={albums} label="Albums" />
+            <AlbumShelf app={app} albums={albums} label="Albums" id="search:albums" />
           </section>
         )}
         {results.songs.length > 0 && <h3 class="pl-section-title">Songs</h3>}

@@ -188,6 +188,7 @@ export function SongList({
                 stats={app.stats.get(line.song.path)}
                 onFavourite={() => app.stats.toggleFavourite([line.song.path])}
                 selected={selection.paths.has(line.key)}
+                cursor={selection.cursor === line.key}
                 playing={line.song.path === playing ? state : null}
                 drop={
                   gap === line.index
@@ -250,6 +251,8 @@ function SongRow(props: {
   readonly stats: SongStats;
   readonly onFavourite: () => void;
   readonly selected: boolean;
+  /** The keyboard's place in the list: the row the arrow keys move from, drawn with the focus ring. */
+  readonly cursor: boolean;
   /** The player's state when this is the playing song. */
   readonly playing: string | null;
   /** Where a dragged entry would land, shown as a line. */
@@ -268,6 +271,7 @@ function SongRow(props: {
     s.error ? 'pl-unreadable' : '',
     props.playing ? 'pl-playing' : '',
     props.stripe ? 'pl-stripe' : '',
+    props.cursor ? 'pl-cursor' : '',
     props.drop ? `pl-drop-${props.drop}` : '',
   ]
     .filter(Boolean)

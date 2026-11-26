@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useRef } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { isComposingKey } from '../commands/shortcut.ts';
+import { forgetReturn, rememberReturn, returnTarget } from './focusReturn.ts';
 
 /**
  * Where a key moves the highlight in a list of `count` items: ↓ and Tab go down, ↑ and Shift+Tab go up,
@@ -35,10 +36,14 @@ export function ListPopup(props: {
 }) {
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
+  // A layout effect, so the field has focus before the menu is first painted and no typed key is lost.
+  useLayoutEffect(() => {
+    const previous = returnTarget(document.activeElement);
+    const popup = input.current?.closest('[role="dialog"]') ?? null;
+    rememberReturn(popup, previous);
     input.current?.focus();
     return () => {
+      forgetReturn(popup);
       // Back where it was, unless the command picked has already moved the keyboard (Go to Today: the list).
       const now = document.activeElement;
       const moved = now !== null && now !== document.body && now !== input.current;

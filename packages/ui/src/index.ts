@@ -107,3 +107,4 @@ export {
   visibleRows,
   type VisibleRows,
 } from './components/domHooks.ts';
+export { RovingFocus, rovingStep, type RovingKey } from './components/roving.ts';

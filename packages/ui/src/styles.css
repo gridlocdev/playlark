@@ -21,6 +21,8 @@
   --pl-accent: var(--pl-accent-light);
   --pl-accent-soft: color-mix(in srgb, var(--pl-accent) 14%, transparent);
   --pl-accent-text: #ffffff;
+  --pl-focus: var(--pl-accent);
+  --pl-focus-on-accent: var(--pl-accent-text);
   --pl-now: #e5484d;
   --pl-danger: #d13438;
   --pl-shadow: 0 12px 36px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -82,6 +84,8 @@
     --pl-accent: var(--pl-accent-dark);
     --pl-accent-soft: color-mix(in srgb, var(--pl-accent) 24%, transparent);
     --pl-accent-text: #ffffff;
+    --pl-focus: var(--pl-accent);
+    --pl-focus-on-accent: var(--pl-accent-text);
     --pl-now: #ff6369;
     --pl-danger: #ff6b6b;
     --pl-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -107,6 +111,8 @@
   --pl-accent: var(--pl-accent-dark);
   --pl-accent-soft: color-mix(in srgb, var(--pl-accent) 24%, transparent);
   --pl-accent-text: #ffffff;
+  --pl-focus: var(--pl-accent);
+  --pl-focus-on-accent: var(--pl-accent-text);
   --pl-now: #ff6369;
   --pl-danger: #ff6b6b;
   --pl-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.4);
@@ -150,8 +156,15 @@ textarea {
   font: inherit;
   color: inherit;
 }
+/*
+ * The one focus mark: the app draws every focus ring itself in --pl-focus (the accent, in light and dark), and
+ * --pl-focus-on-accent on a solid accent background. The browser's own outline never shows.
+ */
+:focus {
+  outline: none;
+}
 :focus-visible {
-  outline: 2px solid var(--pl-accent);
+  outline: 2px solid var(--pl-focus);
   outline-offset: 1px;
 }
 kbd {
@@ -299,9 +312,6 @@ kbd {
   align-items: flex-start;
   padding-top: 12vh;
 }
-.pl-dialog:focus {
-  outline: none;
-}
 .pl-dialog {
   width: 440px;
   max-width: 100%;
@@ -403,6 +413,10 @@ kbd {
   background: none;
   font-size: 15px;
   outline: none;
+}
+/* The field always has focus while the menu is open; the line under it says so. */
+.pl-palette input:focus {
+  box-shadow: inset 0 -2px 0 var(--pl-focus);
 }
 .pl-palette ul {
   list-style: none;

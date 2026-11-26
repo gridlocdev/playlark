@@ -110,6 +110,10 @@ On a Playlark server, the browser keeps the app's own files (never music), so **
 
 Every command has a key, listed by Help › Keyboard Shortcuts (⌘/), and ⌘K runs any command by name. In the Keyboard Shortcuts window, **Press a Shortcut…** shows which command a key runs without running it, or that no command uses it. Esc or **Stop** ends it.
 
+## Keyboard focus
+
+The app draws its own focus mark, one ring in the accent colour, in light and dark. In the song list and the queue it rings the row the arrow keys move from. A grid of album covers, the artists list, a folder's subfolders and search's artist names are each one Tab stop: the arrow keys, Home and End move inside them. After a click, a key, a command or a dialog closing, the ring is on the item the app is working on, and closing a dialog puts focus back on the item it was opened from, even when it was opened from ⌘K.
+
 ## Settings
 
 Settings… (⌘, — in the app menu on macOS) sets the appearance (System, Light or Dark), ReplayGain (Off, Track or Album) with a pre-amp, a crossfade of up to 12 seconds, and whether the folder is read again at start. Each change takes effect at once. The desktop app keeps them in `settings.json` in its data folder; the browser keeps them in its own storage.

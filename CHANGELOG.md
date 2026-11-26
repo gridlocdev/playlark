@@ -4,6 +4,7 @@
 
 - Firefox and Safari open a music folder in the browser build too, through the browser's folder picker.
 - **Press a Shortcut…** in the Keyboard Shortcuts window (⌘/) shows which command a key runs, without running it. Esc or **Stop** ends it.
+- Keyboard focus is drawn by the app in one ring, in light and dark. The song list rings the row the arrow keys move from, album covers, artists and subfolders are one Tab stop each with the arrow keys inside, and closing a dialog puts focus back on the song or album it was opened from, even when it was opened from ⌘K.
 - The desktop app turns off Electron's Node.js switches (`ELECTRON_RUN_AS_NODE`, `NODE_OPTIONS`, `--inspect`) and loads only its own code.
 - If you build Playlark yourself, `just install-desktop` offers to quit a running copy and opens it again after installing.
 

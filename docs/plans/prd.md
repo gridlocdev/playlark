@@ -143,6 +143,7 @@ The exact number of real samples, so the player can trim what encoders add (§8.
 ## §7 Look
 
 - Calm and neutral like the sibling apps: neutral greys, one accent colour for selection, focus and the playing song, cover art as the only large colour. Light, dark, or follow the system (§19).
+- Focus is always visible and always drawn by the app, never the browser's outline: one ring in the focus colour (the accent) for every control. In the song list and the queue the ring is on the cursor row; a grid of covers and a list of artists or folders is one Tab stop whose arrow keys move the focused item (roving focus, kept in the model). After a click, a key, a command, Back, or a dialog closing, the visible focus is the item the app is working on.
 - The playing song shows a small animated bars glyph in every list it appears in (still bars with reduced motion).
 
 ## §8 Playback

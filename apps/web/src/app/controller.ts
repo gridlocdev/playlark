@@ -42,6 +42,7 @@ import {
   type History,
   type View,
 } from './views.ts';
+import { ListFocus } from './listFocus.ts';
 
 /** How often the song list takes in what a scan has found so far (PRD §3.3). */
 export const SCAN_UPDATE_MS = 500;
@@ -116,6 +117,8 @@ export class AppController {
   readonly dialog = signal<DialogKind | null>(null);
   /** The Keyboard Shortcuts window's "press a shortcut" mode; any dialog change ends it. */
   readonly keyProbe = new KeyProbe();
+  /** Each list of buttons' roving focus (album covers, artists, folders). */
+  readonly lists = new ListFocus();
   readonly queueShown = signal(false);
   /** The Up Next entry the queue panel's cursor is on (an index in the queue), or null. */
   readonly queueCursor = signal<number | null>(null);
@@ -395,6 +398,8 @@ export class AppController {
       this.#selectFirst();
     });
     this.#opened(to.current);
+    if (typeof document !== 'undefined')
+      this.lists.returnTo(to.current, document.activeElement, document.body);
   }
 
   #selectFirst(): void {

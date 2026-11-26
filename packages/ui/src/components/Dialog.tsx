@@ -1,7 +1,8 @@
 import type { ComponentChildren } from 'preact';
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { useId, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { isComposingKey, isSubmitKey, isUndoKey } from '../commands/shortcut.ts';
 import { trapTab } from './focusTrap.ts';
+import { forgetReturn, rememberReturn, returnTarget } from './focusReturn.ts';
 
 /**
  * The one modal dialog: labelled by its title, Escape and a click on the backdrop close it, ⌘Enter (Ctrl+Enter)
@@ -26,7 +27,7 @@ export function Dialog(props: {
   const box = useRef<HTMLDivElement>(null);
   const titleId = useId();
   // Taken while rendering: the body's own effects run first and may already have moved focus inside.
-  const [previous] = useState(() => document.activeElement as HTMLElement | null);
+  const [previous] = useState(() => returnTarget(document.activeElement));
   useLayoutEffect(() => {
     const b = box.current;
     const anchor = props.anchor;
@@ -38,13 +39,18 @@ export function Dialog(props: {
     watch.observe(b);
     return () => watch.disconnect();
   }, []);
-  useEffect(() => {
+  // A layout effect, so focus is inside before the dialog is first painted: a key pressed the moment it shows
+  // (Escape) reaches it instead of the page behind.
+  useLayoutEffect(() => {
     const root = ref.current;
     const first =
       root?.querySelector<HTMLElement>('[data-autofocus]') ??
       root?.querySelector<HTMLElement>('input, select, textarea, button');
     if (!root?.contains(document.activeElement)) first?.focus();
+    const popup = box.current;
+    rememberReturn(popup, previous);
     return () => {
+      forgetReturn(popup);
       if (previous?.isConnected && previous !== document.body) previous.focus();
     };
   }, []);
