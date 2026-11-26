@@ -108,7 +108,7 @@ On a Playlark server, the browser keeps the app's own files (never music), so **
 
 ## Keyboard shortcuts
 
-Every command has a key, listed by Help › Keyboard Shortcuts (⌘/), and ⌘K runs any command by name. In the Keyboard Shortcuts window, **Press a Shortcut…** shows which command a key runs without running it, or that no command uses it. Esc or **Stop** ends it.
+Every command has a key, listed by Help › Keyboard Shortcuts (⌘/), and ⌘K runs any command by name. In the Keyboard Shortcuts window, **Press a Shortcut…** shows which command a key runs without running it, or that no command uses it. Esc or **Stop** ends it, and it ends by itself after 30 seconds without a key.
 
 ## Keyboard focus
 

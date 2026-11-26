@@ -180,7 +180,8 @@ function ShortcutsDialog({
 
 /** The line "press a shortcut" shows for the last key pressed. */
 function probeText(found: ProbeResult | null, catalog: CommandCatalog): string {
-  if (!found) return 'Press a shortcut to see what it does. Press Esc or Stop to finish.';
+  if (!found)
+    return 'Press a shortcut to see what it does. Press Esc or Stop to finish; it stops by itself after 30 seconds without a key.';
   switch (found.kind) {
     case 'command':
       return `${catalog.keys(found.command, isMac).join(' ')}: ${found.command.title.replace(/…$/, '')}`;

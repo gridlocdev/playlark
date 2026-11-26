@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   CommandCatalog,
   KeyProbe,
+  PROBE_IDLE_MS,
   SEQUENCE_MS,
   probeKey,
   startProbe,
@@ -125,6 +126,45 @@ describe('Keyboard shortcuts', () => {
       expect(esc.defaultPrevented).toBe(false);
       expect(p.ended).toEqual(['end']);
       expect(p.reached).toEqual(['Escape', 'k']);
+    });
+
+    describe('with no key for a while', () => {
+      afterEach(() => vi.useRealTimers());
+
+      it('ends on its own and gives the keys back, and each key starts the wait again', () => {
+        vi.useFakeTimers();
+        const { c } = catalog();
+        const p = page(c, () => {});
+        vi.advanceTimersByTime(PROBE_IDLE_MS - 1);
+        p.target.dispatchEvent(keydown({ key: 'k', code: 'KeyK', metaKey: true }));
+        vi.advanceTimersByTime(PROBE_IDLE_MS - 1);
+        expect(p.ended).toEqual([]);
+        expect(p.reached).toEqual([]);
+        vi.advanceTimersByTime(1);
+        expect(p.ended).toEqual(['end']);
+        p.target.dispatchEvent(keydown({ key: ' ', code: 'Space' }));
+        expect(p.reached).toEqual([' ']);
+      });
+
+      it('leaves no timer behind once stopped', () => {
+        vi.useFakeTimers();
+        const { c } = catalog();
+        const p = page(c, () => {});
+        p.stop();
+        expect(vi.getTimerCount()).toBe(0);
+        vi.advanceTimersByTime(PROBE_IDLE_MS);
+        expect(p.ended).toEqual(['end']);
+      });
+
+      it('turns the model off when the wait runs out', () => {
+        vi.useFakeTimers();
+        const { c } = catalog();
+        const probe = new KeyProbe();
+        probe.start(new EventTarget() as never, c, () => true);
+        expect(probe.on.value).toBe(true);
+        vi.advanceTimersByTime(PROBE_IDLE_MS);
+        expect(probe.on.value).toBe(false);
+      });
     });
 
     it('stops listening when stop is called, once, as when the window closes', () => {

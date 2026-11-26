@@ -31,6 +31,7 @@ export {
 export { keyFocus, listenForKeys } from './commands/keys.ts';
 export {
   KeyProbe,
+  PROBE_IDLE_MS,
   probeKey,
   startProbe,
   type ProbeEvent,

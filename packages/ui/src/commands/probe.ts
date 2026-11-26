@@ -5,6 +5,7 @@
  * goes on.
  */
 import { signal } from '@preact/signals';
+import { debounce } from '../schedule.ts';
 import type { Command, CommandCatalog } from './command.ts';
 import {
   SEQUENCE_MS,
@@ -36,6 +37,9 @@ interface KeyTarget {
     options: { capture: boolean },
   ): void;
 }
+
+/** How long the mode waits for a key before it ends on its own and gives the keys back. */
+export const PROBE_IDLE_MS = 30_000;
 
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Fn', 'OS']);
 
@@ -80,12 +84,17 @@ export function probeKey(
 export interface ProbeOptions {
   /** Hears each key's result. */
   readonly onKey: (result: ProbeResult) => void;
-  /** Hears that the mode ended: by Escape, by `stop`, by an error, or because it is no longer `active`. */
+  /**
+   * Hears that the mode ended: by Escape, by `stop`, by an error, after `idleMs` with no key, or because it is
+   * no longer `active`.
+   */
   readonly onEnd: () => void;
   /** False once the window that shows the results is gone; the next key then ends the mode and goes through. */
   readonly active?: () => boolean;
   readonly now?: () => number;
   readonly mac?: boolean;
+  /** How long it waits for a key before it ends; each key starts the wait again. */
+  readonly idleMs?: number;
 }
 
 /**
@@ -93,12 +102,15 @@ export interface ProbeOptions {
  * the window closes.
  */
 export function startProbe(target: KeyTarget, catalog: CommandCatalog, options: ProbeOptions): () => void {
-  const { onKey, onEnd, active = () => true, now = Date.now, mac = isMac } = options;
+  const { onKey, onEnd, active = () => true, now = Date.now, mac = isMac, idleMs = PROBE_IDLE_MS } = options;
   let pending: { readonly first: Shortcut; readonly at: number } | null = null;
   let on = true;
+  // Each key starts the wait again; once it runs out the mode ends.
+  const idle = debounce(idleMs, () => stop());
   const stop = () => {
     if (!on) return;
     on = false;
+    idle.cancel();
     target.removeEventListener('keydown', listener, { capture: true });
     onEnd();
   };
@@ -108,6 +120,7 @@ export function startProbe(target: KeyTarget, catalog: CommandCatalog, options: 
       stop();
       return;
     }
+    idle.call();
     let handled = false;
     try {
       e.preventDefault();
@@ -127,6 +140,7 @@ export function startProbe(target: KeyTarget, catalog: CommandCatalog, options: 
     }
   };
   target.addEventListener('keydown', listener, { capture: true });
+  idle.call();
   return stop;
 }
 
