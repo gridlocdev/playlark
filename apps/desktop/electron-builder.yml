@@ -9,8 +9,16 @@ files:
   # The window icon on Linux and Windows (macOS takes the bundle's icon.icns).
   - build/icon.png
 asar: true
-# Electron fuses, flipped before signing (scripts/fuses.mjs).
-afterPack: scripts/fuses.mjs
+# Electron fuses, flipped before signing. Pages load from app://, never file://.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableCookieEncryption: true
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false
+  resetAdHocDarwinSignature: true
 # One naming scheme on every system: Playlark-1.0.0-mac-arm64.dmg, Playlark-1.0.0-win-x64.exe, …
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 mac:
