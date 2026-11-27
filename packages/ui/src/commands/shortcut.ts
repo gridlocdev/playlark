@@ -162,7 +162,7 @@ const MAC_SYMBOLS: Record<string, string> = {
   down: '↓',
   left: '←',
   right: '→',
-  space: '␣',
+  space: 'Space',
   pageup: '⇞',
   pagedown: '⇟',
   home: '↖',

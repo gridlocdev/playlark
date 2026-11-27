@@ -31,6 +31,7 @@ describe('shortcuts', () => {
 
   it('labels arrow keys on each platform', () => {
     expect(formatShortcut(parseShortcut('mod+alt+right'), true)).toBe('⌥⌘→');
+    expect(formatShortcut(parseShortcut('space'), true)).toBe('Space');
     expect(formatShortcut(parseShortcut('mod+up'), false)).toBe('Ctrl+Up');
   });
 });

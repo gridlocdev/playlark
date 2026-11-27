@@ -41,18 +41,18 @@ Favourites, Recently Added and Most Played are under **Collections** in the side
 
 ## Playback
 
-| Action                                         | macOS    | Windows / Linux      |
-| ---------------------------------------------- | -------- | -------------------- |
-| Play or pause                                  | **␣**    | **Space**            |
-| Next song                                      | **⌘↓**   | **Ctrl+Down**        |
-| Previous song (or back to the start after 3 s) | **⌘↑**   | **Ctrl+Up**          |
-| Skip forward 10 s                              | **⌥⌘→**  | **Ctrl+Alt+Right**   |
-| Skip back 10 s                                 | **⌥⌘←**  | **Ctrl+Alt+Left**    |
-| Volume up                                      | **⌘→**   | **Ctrl+Right**       |
-| Volume down                                    | **⌘←**   | **Ctrl+Left**        |
-| Shuffle on or off                              | **⌘S**   | **Ctrl+S**           |
-| Loop this song on or off                       | **⌥⌘R**  | **Ctrl+Alt+R**       |
-| Loop the queue on or off                       | **⌥⇧⌘R** | **Ctrl+Alt+Shift+R** |
+| Action                                         | macOS     | Windows / Linux      |
+| ---------------------------------------------- | --------- | -------------------- |
+| Play or pause                                  | **Space** | **Space**            |
+| Next song                                      | **⌘↓**    | **Ctrl+Down**        |
+| Previous song (or back to the start after 3 s) | **⌘↑**    | **Ctrl+Up**          |
+| Skip forward 10 s                              | **⌥⌘→**   | **Ctrl+Alt+Right**   |
+| Skip back 10 s                                 | **⌥⌘←**   | **Ctrl+Alt+Left**    |
+| Volume up                                      | **⌘→**    | **Ctrl+Right**       |
+| Volume down                                    | **⌘←**    | **Ctrl+Left**        |
+| Shuffle on or off                              | **⌘S**    | **Ctrl+S**           |
+| Loop this song on or off                       | **⌥⌘R**   | **Ctrl+Alt+R**       |
+| Loop the queue on or off                       | **⌥⇧⌘R**  | **Ctrl+Alt+Shift+R** |
 
 Right-click a song, or the selected songs (or press **Shift+F10** or the Menu key in the song list), for **Play**, **Play Next**, **Add to Queue**, **Add to Playlist…**, **Favourite**, **Song Info…**, **Go to Album** and **Go to Artist**, in the desktop app **Show in Finder** (**Show in File Explorer** on Windows, **Show in File Manager** on Linux), and inside a playlist **Remove from Playlist**. The Play and Shuffle buttons on an album, an artist or a folder play all its songs.
 
