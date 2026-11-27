@@ -22,7 +22,12 @@ test.describe('Playlists', () => {
       'Missing: Gone/away.mp3',
       'untagged',
     ]);
-    await expect(list.getByRole('row', { name: /Missing/ })).toHaveClass(/pl-unreadable/);
+    const gone = list.getByRole('row', { name: /Missing/ });
+    await expect(gone).toHaveClass(/pl-unreadable/);
+    // A missing entry has no tags to show, and the count says what plays.
+    await expect(gone.locator('td.pl-col-artist')).toHaveText('');
+    await expect(gone.locator('td.pl-col-album')).toHaveText('');
+    await expect(page.locator('.pl-page-facts')).toHaveText('2 songs · 1 missing');
     await page.getByRole('button', { name: 'Play Mix' }).click();
     const bar = nowPlaying(page);
     await expect(bar).toContainText('Rain on Tin');

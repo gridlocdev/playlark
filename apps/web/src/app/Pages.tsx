@@ -7,6 +7,7 @@ import { collection, type CollectionKind } from './Collections.tsx';
 import { PlaylistsPage } from './Phone.tsx';
 import { LIST_COLUMNS, SongList } from './SongList.tsx';
 import { listFocusId } from './listFocus.ts';
+import { MISSING } from './playlists.ts';
 import type { View } from './views.ts';
 
 /** How many artists and albums search shows before "Show all" (§6.4). */
@@ -148,11 +149,16 @@ export function PlayButtons({
   readonly name: string;
   readonly songs: () => readonly Song[];
 }) {
+  // Read now as well, only to see whether anything can play (missing and unreadable songs can't).
+  const none = !songs().some((s) => !s.error);
+  const why = none ? 'Nothing here can play.' : undefined;
   return (
     <>
       <button
         type="button"
         class="pl-button pl-button-primary"
+        disabled={none}
+        title={why}
         aria-label={`Play ${name}`}
         onClick={() => void app.playSongs(songs())}
       >
@@ -161,6 +167,8 @@ export function PlayButtons({
       <button
         type="button"
         class="pl-button"
+        disabled={none}
+        title={why}
         aria-label={`Shuffle ${name}`}
         onClick={() => void app.shuffleSongs(songs())}
       >
@@ -181,7 +189,7 @@ function PlaylistPage({ app, path }: { readonly app: AppController; readonly pat
       <header class="pl-page-head pl-page-head-plain">
         <div class="pl-page-text">
           <h2>{name}</h2>
-          <p class="pl-page-facts">{loaded ? songCount(songs.length) : 'Reading…'}</p>
+          <p class="pl-page-facts">{loaded ? playlistFacts(songs) : 'Reading…'}</p>
           <div class="pl-page-actions">
             <PlayButtons app={app} name={name} songs={() => app.rows.peek()} />
           </div>
@@ -208,6 +216,14 @@ function PlaylistPage({ app, path }: { readonly app: AppController; readonly pat
 }
 
 export const songCount = (n: number) => (n === 1 ? '1 song' : `${formatCount(n)} songs`);
+
+/** A playlist's count: the songs it has, then how many entries are missing from the music folder (§9.1). */
+export function playlistFacts(songs: readonly Song[]): string {
+  const missing = songs.filter((s) => s.error === MISSING).length;
+  return missing === 0
+    ? songCount(songs.length)
+    : `${songCount(songs.length - missing)} · ${formatCount(missing)} missing`;
+}
 
 function AlbumPage({ app, album }: { readonly app: AppController; readonly album: Album }) {
   const lib = app.library.value;
@@ -353,7 +369,11 @@ function SearchPage({ app, query }: { readonly app: AppController; readonly quer
   const [allAlbums, setAllAlbums] = useState(false);
   const results = app.results.value;
   if (!results || (!results.artists.length && !results.albums.length && !results.songs.length))
-    return <Gone text={`Nothing matches “${query}”.`} />;
+    return (
+      <Gone
+        text={`Nothing matches “${query}”. Search looks at titles, artists, albums, genres and file names.`}
+      />
+    );
   const artists = allArtists ? results.artists : results.artists.slice(0, SEARCH_ARTISTS);
   const albums = allAlbums ? results.albums : results.albums.slice(0, SEARCH_ALBUMS);
   const chips = app.lists.get('search:artists');

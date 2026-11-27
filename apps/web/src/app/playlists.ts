@@ -42,7 +42,12 @@ export const MISSING = 'This song isn’t in the music folder.';
 /** The row for an entry whose song isn't in the library: greyed, and skipped when played (§9.1). */
 export function missingSong(entry: PlaylistEntry): Song {
   const path = entry.path ?? entry.raw;
-  return { ...unreadableSong({ path, size: 0, mtime: 0 }, null, MISSING), title: `Missing: ${path}` };
+  return {
+    ...unreadableSong({ path, size: 0, mtime: 0 }, null, MISSING),
+    title: `Missing: ${path}`,
+    artist: '',
+    album: '',
+  };
 }
 
 const byName = (a: PlaylistInfo, b: PlaylistInfo) =>

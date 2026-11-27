@@ -12,7 +12,12 @@ const COLLECTIONS: readonly {
   /** The one line an empty collection shows: how to fill it. */
   readonly empty: string;
 }[] = [
-  { kind: 'favourites', title: 'Favourites', icon: 'heart', empty: 'Songs you favourite appear here.' },
+  {
+    kind: 'favourites',
+    title: 'Favourites',
+    icon: 'heart',
+    empty: 'Songs you favourite appear here. Click the heart beside a song, or choose Favourite in its menu.',
+  },
   {
     kind: 'recent',
     title: 'Recently Added',

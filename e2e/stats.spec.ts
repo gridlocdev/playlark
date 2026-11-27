@@ -11,6 +11,12 @@ test.describe('Favourites and play counts', () => {
   }) => {
     const errors = watchErrors(page);
     await openApp(page);
+    // Empty Favourites: nothing to play, and it says how to fill it.
+    await page.getByRole('list', { name: 'Collections' }).getByRole('button', { name: 'Favourites' }).click();
+    await expect(page.getByRole('button', { name: 'Play Favourites' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Shuffle Favourites' })).toBeDisabled();
+    await expect(page.getByText('Click the heart beside a song')).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+Digit1');
     const row = page.getByRole('row', { name: /Rain on Tin/ });
     await row.hover();
     const heart = row.getByRole('button', { name: 'Favourite' });
