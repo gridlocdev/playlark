@@ -49,8 +49,9 @@ export function Cover({
 
 export const albumCount = (n: number) => (n === 1 ? '1 album' : `${formatCount(n)} albums`);
 
-/** A card's width and height in px, the gap included. */
+/** A card's width and height in px, the gap included (the last card in a row needs no gap). */
 const CARD_WIDTH = 176;
+const CARD_GAP = 16;
 const CARD_HEIGHT = 224;
 const GRID_PADDING = 32;
 
@@ -98,7 +99,7 @@ export function AlbumGrid({
   const row = Math.floor(focus.current(albums.length) / columns);
   const rows = Math.ceil(albums.length / columns);
   const { start, end, width } = useVirtualRows(scroller, rows, CARD_HEIGHT, row);
-  const fit = Math.max(1, Math.floor((width - GRID_PADDING) / CARD_WIDTH));
+  const fit = Math.max(1, Math.floor((width - GRID_PADDING + CARD_GAP) / CARD_WIDTH));
   if (fit !== columns) setColumns(fit);
   return (
     <div

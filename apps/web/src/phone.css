@@ -50,6 +50,42 @@
     min-height: 44px;
   }
 
+  /* Dialogs: each label above its field, fields across the dialog, and Song Info's cover above its fields. */
+  .pl-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .pl-song-info .pl-field {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pl-field > span {
+    text-align: left;
+  }
+  .pl-field select,
+  .pl-field input:not([type='checkbox']) {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .pl-info {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  /* No key hints where there is no keyboard. */
+  .pl-palette kbd {
+    display: none;
+  }
+
+  /* An album's, artist's or playlist's header: the cover above its title, the buttons free to wrap. */
+  .pl-page-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+  .pl-page-actions {
+    flex-wrap: wrap;
+  }
+
   /* Bigger rows for fingers, and only the title, artist and time. */
   .pl-view :is(th, td):not(.pl-col-mark, .pl-col-title, .pl-col-artist, .pl-col-time) {
     display: none;

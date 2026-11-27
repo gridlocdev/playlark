@@ -191,7 +191,7 @@ function PlaylistPage({ app, path }: { readonly app: AppController; readonly pat
         <Gone
           text={
             editable
-              ? 'This playlist is empty. Drag songs onto it in the sidebar, or use Add to Playlist.'
+              ? "This playlist is empty. Use Add to Playlist… in a song's menu, or drag songs onto it in the sidebar."
               : 'This playlist is empty.'
           }
         />
