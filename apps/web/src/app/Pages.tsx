@@ -418,8 +418,8 @@ function SearchPage({ app, query }: { readonly app: AppController; readonly quer
             <AlbumShelf app={app} albums={albums} label="Albums" id="search:albums" />
           </section>
         )}
-        {results.songs.length > 0 && <h3 class="pl-section-title">Songs</h3>}
       </div>
+      {results.songs.length > 0 && <h3 class="pl-section-title">Songs</h3>}
       {results.songs.length > 0 && <SongList app={app} label="Songs" columns={LIST_COLUMNS} />}
     </div>
   );

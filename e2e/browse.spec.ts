@@ -107,6 +107,11 @@ test.describe('Search', () => {
     await expect(page.getByRole('region', { name: 'Artists' })).toContainText('Northwind Quartet');
     await expect(page.getByRole('region', { name: 'Albums' })).toContainText('Harbour Lights');
     await expect(songs(page).locator('tbody tr')).toHaveCount(3);
+    // The Songs heading shows in full, like Artists and Albums.
+    const heading = page.getByRole('heading', { name: 'Songs', exact: true });
+    const box = await heading.boundingBox();
+    expect(box?.height).toBeGreaterThan(14);
+    await expect(heading).toBeInViewport({ ratio: 1 });
     // Every word must match: the artist alone doesn't, the album does.
     await page.keyboard.type(' har');
     await expect(page.getByRole('region', { name: 'Artists' })).toBeHidden();
