@@ -44,7 +44,7 @@ interface Entry extends MenuEntry {
   readonly enabled: boolean;
 }
 
-/** ⌘K: every command, recent ones first (PRD §14). */
+/** ⌘K: every command, recent ones first, and before typing, the ones that can run now first (PRD §14). */
 function CommandMenu({ app, catalog }: { readonly app: AppController; readonly catalog: CommandCatalog }) {
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
@@ -62,7 +62,9 @@ function CommandMenu({ app, catalog }: { readonly app: AppController; readonly c
         })),
     [catalog],
   );
-  const results = filterEntries(entries, query, catalog.recentIds).slice(0, 80);
+  const found = filterEntries(entries, query, catalog.recentIds);
+  // Before anything is typed, what can run now comes first (the sort keeps the order within each part).
+  const results = (query.trim() ? found : [...found].sort((a, b) => +b.enabled - +a.enabled)).slice(0, 80);
   const pick = (i: number) => {
     const entry = results[i];
     if (!entry?.enabled) return;

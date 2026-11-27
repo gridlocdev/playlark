@@ -1,6 +1,21 @@
 import { commandMenu, expect, openApp, test, watchErrors } from './fixtures.ts';
 
 test.describe('Keyboard shortcuts', () => {
+  test('before anything is typed, ⌘K lists the commands that can run now first', async ({ page, seed }) => {
+    seed('basic');
+    const errors = watchErrors(page);
+    await openApp(page);
+    await page.keyboard.press('ControlOrMeta+KeyK');
+    const options = page.getByRole('listbox').getByRole('option');
+    await expect(options.first()).toBeVisible();
+    const disabled = await options.evaluateAll((els) =>
+      els.map((el) => el.getAttribute('aria-disabled') === 'true'),
+    );
+    expect(disabled.indexOf(true)).toBeGreaterThan(0);
+    expect(disabled.slice(disabled.indexOf(true))).not.toContain(false);
+    expect(errors).toEqual([]);
+  });
+
   test('Press a Shortcut names the command a key runs without running it, and Esc gives the keys back', async ({
     page,
   }) => {
