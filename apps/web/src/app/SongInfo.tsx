@@ -2,6 +2,7 @@
  * The Song Info dialog (PRD §11.1): the tags of the selected songs, the cover, and for one song its file facts.
  * Its state and saving live in `TagEditor`.
  */
+import type { ComponentChildren } from 'preact';
 import { useMemo, useRef } from 'preact/hooks';
 import { pictureMime, type Picture, type Song } from '@playlark/core';
 import { Dialog, formatTime } from '@playlark/ui';
@@ -225,7 +226,7 @@ function CoverBox({ tags, disabled }: { readonly tags: TagEditor; readonly disab
       <button
         type="button"
         class="pl-button"
-        disabled={disabled || shown === null}
+        disabled={disabled || !shown}
         onClick={() => tags.setCover(null)}
       >
         Remove
@@ -234,9 +235,23 @@ function CoverBox({ tags, disabled }: { readonly tags: TagEditor; readonly disab
   );
 }
 
+/** A path that wraps only after a "/" while each folder or file name fits the line. */
+function PathParts({ path }: { readonly path: string }) {
+  const parts = path.split('/');
+  return (
+    <>
+      {parts.map((p, i) => (
+        <span key={i} class="pl-path-part">
+          {i < parts.length - 1 ? `${p}/` : p}
+        </span>
+      ))}
+    </>
+  );
+}
+
 /** The read-only facts of one file (§4.2) and its path. */
 function FileFacts({ song }: { readonly song: Song }) {
-  const facts: [string, string][] = [
+  const facts: [string, ComponentChildren][] = [
     ['Format', `${song.format?.toUpperCase() ?? '?'} (${song.codec.toUpperCase()})`],
     ['Length', formatTime(song.duration)],
     ['Sample rate', `${(song.sampleRate / 1000).toFixed(1)} kHz`],
@@ -244,7 +259,7 @@ function FileFacts({ song }: { readonly song: Song }) {
   ];
   if (song.bitsPerSample) facts.push(['Bit depth', `${song.bitsPerSample}-bit`]);
   if (song.bitrate) facts.push(['Bit rate', `${Math.round(song.bitrate / 1000)} kbps`]);
-  facts.push(['Size', `${(song.size / 1_000_000).toFixed(1)} MB`], ['Path', song.path]);
+  facts.push(['Size', `${(song.size / 1_000_000).toFixed(1)} MB`], ['Path', <PathParts path={song.path} />]);
   return (
     <dl class="pl-info-facts">
       {facts.map(([k, v]) => (

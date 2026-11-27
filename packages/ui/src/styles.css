@@ -570,6 +570,11 @@ kbd {
   margin: 0;
   overflow-wrap: anywhere;
 }
+/* Each part of a path stays whole on its line unless it is wider than the line itself. */
+.pl-path-part {
+  display: inline-block;
+  max-width: 100%;
+}
 .pl-info-note {
   color: var(--pl-text-2);
 }

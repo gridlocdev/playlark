@@ -20,6 +20,14 @@ test.describe('Editing tags', () => {
     const title = dialog.locator('input[name="title"]');
     await expect(title).toHaveValue('Salt Air');
     await expect(dialog).toContainText('FLAC');
+    // No cover, so nothing to remove.
+    await expect(dialog.getByRole('button', { name: 'Remove' })).toBeDisabled();
+    // The path wraps only after a "/": each folder and file name is one piece.
+    await expect(dialog.locator('.pl-path-part')).toHaveText([
+      'Northwind Quartet/',
+      'Harbour Lights/',
+      '02 Salt Air.flac',
+    ]);
     await title.fill('Sea Salt');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(dialog).toBeHidden();
