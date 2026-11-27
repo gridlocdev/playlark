@@ -112,7 +112,7 @@ Every command has a key, listed by Help › Keyboard Shortcuts (⌘/), and ⌘K 
 
 ## Keyboard focus
 
-The app draws its own focus mark, one ring in the accent colour, in light and dark. In the song list and the queue it rings the row the arrow keys move from. A grid of album covers, the artists list, a folder's subfolders and search's artist names are each one Tab stop: the arrow keys, Home and End move inside them. After a click, a key, a command or a dialog closing, the ring is on the item the app is working on, and closing a dialog puts focus back on the item it was opened from, even when it was opened from ⌘K.
+The app draws its own focus mark, one ring in the accent colour, in light and dark. In the song list and the queue it rings the row the arrow keys move from. A grid of album covers, the artists list, a folder's subfolders and search's artist names are each one Tab stop: the arrow keys, Home and End move inside them. After a click, a key, a command or a dialog closing, the ring is on the item the app is working on, and closing a dialog puts focus back on the item it was opened from, even when it was opened from ⌘K. With Reduce Motion on, nothing animates, so a popup or dialog has the keyboard the moment it shows.
 
 ## Settings
 
