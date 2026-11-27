@@ -1,3 +1,4 @@
+import { useRef } from 'preact/hooks';
 import type { CommandCatalog } from '../commands/command.ts';
 import { Icon } from './Icon.tsx';
 
@@ -5,6 +6,7 @@ import { Icon } from './Icon.tsx';
  * A right-click or ⋯ menu made of catalog commands (`|` is a separator), so titles, ticks and enabled states
  * match every other way in. ↑ ↓ Home End move, Enter or Space runs, Escape or a click outside closes. It
  * focuses its first item as it arrives (a ref callback, not an effect) and keeps itself inside the window.
+ * Escape and Tab give the keyboard back to what had it when the menu opened.
  */
 export function PopupMenu(props: {
   readonly label: string;
@@ -15,9 +17,12 @@ export function PopupMenu(props: {
   readonly onClose: () => void;
 }) {
   const { catalog } = props;
+  /** What had the keyboard when the menu opened; Escape and Tab give it back. */
+  const previous = useRef<HTMLElement | null>(null);
   const place = (el: HTMLDivElement | null) => {
     if (!el || el.dataset.placed) return;
     el.dataset.placed = '1';
+    previous.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const x = props.x + el.offsetWidth > innerWidth - 4 ? Math.max(4, props.x - el.offsetWidth) : props.x;
     const y = props.y + el.offsetHeight > innerHeight - 4 ? Math.max(4, props.y - el.offsetHeight) : props.y;
     el.style.left = `${x}px`;
@@ -33,8 +38,10 @@ export function PopupMenu(props: {
     else if (e.key === 'ArrowUp') go(at - 1);
     else if (e.key === 'Home') go(0);
     else if (e.key === 'End') go(items.length - 1);
-    else if (e.key === 'Escape' || e.key === 'Tab') props.onClose();
-    else return;
+    else if (e.key === 'Escape' || e.key === 'Tab') {
+      props.onClose();
+      previous.current?.focus();
+    } else return;
     e.preventDefault();
     e.stopPropagation();
   };

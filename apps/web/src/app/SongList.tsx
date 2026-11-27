@@ -79,7 +79,19 @@ export function SongList({
     selection.cursor === null ? -1 : lines.findIndex((l) => 'key' in l && l.key === selection.cursor);
   const { start, end } = useVirtualRows(scroller, lines.length, ROW_HEIGHT, focusLine, HEADER_HEIGHT);
 
+  /** Opens the song menu under the cursor row, as the Menu key or Shift+F10 asks. */
+  const menuFromKeys = () => {
+    if (selection.cursor === null || app.blocked()) return;
+    const row = document.getElementById(rowId(selection.cursor))?.getBoundingClientRect();
+    const box = row ?? grid.current?.getBoundingClientRect();
+    if (box) app.menu.value = { x: box.left + 24, y: row ? box.bottom : box.top };
+  };
   const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey && !e.metaKey && !e.ctrlKey && !e.altKey)) {
+      e.preventDefault();
+      menuFromKeys();
+      return;
+    }
     if (e.metaKey || e.ctrlKey || e.altKey || app.blocked()) return;
     const next = step(selection, keys, e.key, e.shiftKey);
     if (!next) return;
@@ -135,6 +147,12 @@ export function SongList({
         tabIndex={0}
         aria-activedescendant={selection.cursor !== null ? rowId(selection.cursor) : undefined}
         onKeyDown={onKeyDown}
+        onContextMenu={(e) => {
+          // A row's right-click is handled by the row. On the list itself, the event came from the keyboard.
+          if (e.target !== e.currentTarget) return;
+          e.preventDefault();
+          menuFromKeys();
+        }}
         onDragLeave={(e) => {
           if (!(e.currentTarget as Node).contains(e.relatedTarget as Node | null)) setGap(null);
         }}

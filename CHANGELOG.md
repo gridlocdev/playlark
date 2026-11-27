@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Shift+F10 or the Menu key opens the song list's menu for the selected songs, under the cursor row.
 - Firefox and Safari open a music folder in the browser build too, through the browser's folder picker.
 - **Press a Shortcut…** in the Keyboard Shortcuts window (⌘/) shows which command a key runs, without running it. Esc or **Stop** ends it, and it ends by itself after 30 seconds without a key.
 - Keyboard focus is drawn by the app in one ring, in light and dark. The song list rings the row the arrow keys move from, album covers, artists and subfolders are one Tab stop each with the arrow keys inside, and closing a dialog puts focus back on the song or album it was opened from, even when it was opened from ⌘K.

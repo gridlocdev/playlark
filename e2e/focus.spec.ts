@@ -138,6 +138,31 @@ test.describe('Keyboard focus', () => {
     expect(errors).toEqual([]);
   });
 
+  test('Shift+F10 and the Menu key open the song menu with the keyboard in it, and Esc gives it back', async ({
+    page,
+  }) => {
+    const errors = watchErrors(page);
+    await openApp(page);
+    const list = songs(page);
+    await list.locator('tbody tr[role="row"]').first().click();
+    await page.keyboard.press('ArrowDown');
+    const menu = page.getByRole('menu', { name: 'Song' });
+    for (const key of ['Shift+F10', 'ContextMenu']) {
+      await page.keyboard.press(key);
+      await expect(menu).toBeVisible();
+      await expect(menu.getByRole('menuitem').first()).toBeFocused();
+      // The menu opens under the cursor row.
+      const row = await list.locator('tr.pl-cursor').boundingBox();
+      const box = await menu.boundingBox();
+      expect(Math.abs(box!.y - (row!.y + row!.height))).toBeLessThan(2);
+      await page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
+      await expect(list).toBeFocused();
+      await expect(list.locator('tbody tr[aria-selected="true"]')).toHaveCount(1);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test('closing a dialog puts focus back on the item it was opened from', async ({ page }) => {
     const errors = watchErrors(page);
     await openApp(page);
